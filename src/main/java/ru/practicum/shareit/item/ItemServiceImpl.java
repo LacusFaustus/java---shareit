@@ -1,7 +1,6 @@
 package ru.practicum.shareit.item;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import ru.practicum.shareit.exception.NotFoundException;
 import ru.practicum.shareit.exception.ValidationException;
@@ -17,13 +16,12 @@ import java.util.stream.Collectors;
 public class ItemServiceImpl implements ItemService {
     private final Map<Long, Item> items = new HashMap<>();
     private final AtomicLong idCounter = new AtomicLong(1);
-
-    @Autowired
-    private UserService userService;
+    private final UserService userService;
 
     @Override
     public ItemDto createItem(ItemDto itemDto, Long ownerId) {
         validateItem(itemDto);
+
         // Проверяем существование пользователя
         userService.getUserById(ownerId);
 
@@ -42,19 +40,16 @@ public class ItemServiceImpl implements ItemService {
             throw new NotFoundException("Item not found");
         }
 
-        // Проверяем, что пользователь - владелец вещи
-        if (!existingItem.getOwner().equals(ownerId)) {
+        if (!existingItem.getOwnerId().equals(ownerId)) {
             throw new NotFoundException("Only owner can update item");
         }
 
         if (itemDto.getName() != null) {
             existingItem.setName(itemDto.getName());
         }
-
         if (itemDto.getDescription() != null) {
             existingItem.setDescription(itemDto.getDescription());
         }
-
         if (itemDto.getAvailable() != null) {
             existingItem.setAvailable(itemDto.getAvailable());
         }
@@ -75,7 +70,7 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public List<ItemDto> getAllItemsByOwner(Long ownerId) {
         return items.values().stream()
-                .filter(item -> item.getOwner().equals(ownerId))
+                .filter(item -> item.getOwnerId().equals(ownerId))
                 .map(ItemMapper::toItemDto)
                 .collect(Collectors.toList());
     }
@@ -83,7 +78,7 @@ public class ItemServiceImpl implements ItemService {
     @Override
     public List<ItemDto> searchItems(String text, Long userId) {
         if (text == null || text.isBlank()) {
-            return new ArrayList<>();
+            return Collections.emptyList();
         }
 
         String searchText = text.toLowerCase();
