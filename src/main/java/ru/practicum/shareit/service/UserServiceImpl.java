@@ -10,23 +10,25 @@ import ru.practicum.shareit.mapper.UserMapper;
 import ru.practicum.shareit.model.User;
 import ru.practicum.shareit.repository.UserRepository;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final UserMapper userMapper;
 
     @Override
     public UserDto createUser(UserDto userDto) {
         validateUser(userDto);
 
-        if (userRepository.existsByEmail(userDto.getEmail())) {
+        if (Boolean.TRUE.equals(userRepository.existsByEmail(userDto.getEmail()))) {
             throw new ConflictException("Email already exists");
         }
 
-        User user = UserMapper.toUser(userDto);
+        User user = userMapper.toEntity(userDto);
         User savedUser = userRepository.save(user);
-        return UserMapper.toUserDto(savedUser);
+        return userMapper.toDto(savedUser);
     }
 
     @Override
@@ -39,28 +41,28 @@ public class UserServiceImpl implements UserService {
         }
 
         if (userDto.getEmail() != null && !existingUser.getEmail().equals(userDto.getEmail())) {
-            if (userRepository.existsByEmail(userDto.getEmail())) {
+            if (Boolean.TRUE.equals(userRepository.existsByEmail(userDto.getEmail()))) {
                 throw new ConflictException("Email already exists");
             }
             existingUser.setEmail(userDto.getEmail());
         }
 
         User updatedUser = userRepository.save(existingUser);
-        return UserMapper.toUserDto(updatedUser);
+        return userMapper.toDto(updatedUser);
     }
 
     @Override
     public UserDto getUserById(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
-        return UserMapper.toUserDto(user);
+        return userMapper.toDto(user);
     }
 
     @Override
     public List<UserDto> getAllUsers() {
         return userRepository.findAll().stream()
-                .map(UserMapper::toUserDto)
-                .toList();
+                .map(userMapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override

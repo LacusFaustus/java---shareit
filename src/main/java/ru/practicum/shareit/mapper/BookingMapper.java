@@ -1,26 +1,41 @@
 package ru.practicum.shareit.mapper;
 
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import ru.practicum.shareit.dto.BookingRequestDto;
+import ru.practicum.shareit.dto.BookingResponseDto;
 import ru.practicum.shareit.model.Booking;
-import ru.practicum.shareit.dto.BookingDto;
 
+@Component
+@RequiredArgsConstructor
 public class BookingMapper {
+    private final ItemMapper itemMapper;
+    private final UserMapper userMapper;
 
-    public static BookingDto toBookingDto(Booking booking) {
-        return BookingDto.builder()
+    public Booking toEntity(BookingRequestDto bookingRequestDto) {
+        if (bookingRequestDto == null) {
+            return null;
+        }
+
+        Booking booking = new Booking();
+        booking.setStart(bookingRequestDto.getStart());
+        booking.setEnd(bookingRequestDto.getEnd());
+        // item, booker, status устанавливаются в сервисе
+        return booking;
+    }
+
+    public BookingResponseDto toResponseDto(Booking booking) {
+        if (booking == null) {
+            return null;
+        }
+
+        return BookingResponseDto.builder()
                 .id(booking.getId())
                 .start(booking.getStart())
                 .end(booking.getEnd())
-                .itemId(booking.getItem() != null ? booking.getItem().getId() : null)
-                .bookerId(booking.getBooker() != null ? booking.getBooker().getId() : null)
-                .status(booking.getStatus() != null ? booking.getStatus().name() : null)
+                .item(itemMapper.toDto(booking.getItem()))
+                .booker(userMapper.toDto(booking.getBooker()))
+                .status(booking.getStatus())
                 .build();
-    }
-
-    public static Booking toBooking(BookingDto bookingDto) {
-        Booking booking = new Booking();
-        booking.setId(bookingDto.getId());
-        booking.setStart(bookingDto.getStart());
-        booking.setEnd(bookingDto.getEnd());
-        return booking;
     }
 }

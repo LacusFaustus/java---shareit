@@ -5,19 +5,25 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.NotBlank;
-import java.time.LocalDateTime;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ItemRequestDto {
+public class ItemSimpleDto {
     private Long id;
+
+    @NotBlank(message = "Name cannot be blank")
+    private String name;
 
     @NotBlank(message = "Description cannot be blank")
     private String description;
 
-    private LocalDateTime created;
-    private List<ItemDto> items;
+    @NotNull(message = "Available status must be specified")
+    private Boolean available;
+
+    private Long requestId;
+    // Без информации о бронированиях и комментариях
 }

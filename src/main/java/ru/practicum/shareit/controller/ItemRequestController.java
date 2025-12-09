@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.dto.ItemRequestDto;
 import ru.practicum.shareit.service.ItemRequestService;
+import jakarta.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -15,7 +16,7 @@ public class ItemRequestController {
     private final ItemRequestService itemRequestService;
 
     @PostMapping
-    public ResponseEntity<ItemRequestDto> createItemRequest(@RequestBody ItemRequestDto itemRequestDto,
+    public ResponseEntity<ItemRequestDto> createItemRequest(@Valid @RequestBody ItemRequestDto itemRequestDto,
                                                             @RequestHeader("X-Sharer-User-Id") Long userId) {
         ItemRequestDto createdRequest = itemRequestService.createItemRequest(itemRequestDto, userId);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdRequest);

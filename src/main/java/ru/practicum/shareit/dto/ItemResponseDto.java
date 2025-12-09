@@ -4,20 +4,19 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import jakarta.validation.constraints.NotBlank;
-import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class ItemRequestDto {
+public class ItemResponseDto {
     private Long id;
-
-    @NotBlank(message = "Description cannot be blank")
+    private String name;
     private String description;
-
-    private LocalDateTime created;
-    private List<ItemDto> items;
+    private Boolean available;
+    private Long requestId;
+    private BookingInfoDto lastBooking;
+    private BookingInfoDto nextBooking;
+    private List<CommentDto> comments;
 }
