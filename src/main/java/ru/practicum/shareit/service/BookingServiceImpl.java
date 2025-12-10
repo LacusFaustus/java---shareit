@@ -100,19 +100,12 @@ public class BookingServiceImpl implements BookingService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        if (from < 0 || size <= 0) {
-            throw new ValidationException("Invalid pagination parameters");
-        }
+        validatePaginationParams(from, size);
 
         Pageable pageable = PageRequest.of(from / size, size, Sort.by(Sort.Direction.DESC, "start"));
         LocalDateTime now = LocalDateTime.now();
 
-        BookingState bookingState;
-        try {
-            bookingState = BookingState.valueOf(state.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new ValidationException("Unknown state: " + state);
-        }
+        BookingState bookingState = getBookingState(state);
 
         List<Booking> bookings;
         switch (bookingState) {
@@ -137,6 +130,10 @@ public class BookingServiceImpl implements BookingService {
                 bookings = bookingRepository.findByBookerIdAndStatusOrderByStartDesc(
                         userId, BookingStatus.REJECTED, pageable);
                 break;
+            case CANCELED:
+                bookings = bookingRepository.findByBookerIdAndStatusOrderByStartDesc(
+                        userId, BookingStatus.CANCELED, pageable);
+                break;
             default:
                 throw new ValidationException("Unknown state: " + state);
         }
@@ -151,19 +148,12 @@ public class BookingServiceImpl implements BookingService {
         userRepository.findById(ownerId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        if (from < 0 || size <= 0) {
-            throw new ValidationException("Invalid pagination parameters");
-        }
+        validatePaginationParams(from, size);
 
         Pageable pageable = PageRequest.of(from / size, size, Sort.by(Sort.Direction.DESC, "start"));
         LocalDateTime now = LocalDateTime.now();
 
-        BookingState bookingState;
-        try {
-            bookingState = BookingState.valueOf(state.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new ValidationException("Unknown state: " + state);
-        }
+        BookingState bookingState = getBookingState(state);
 
         List<Booking> bookings;
         switch (bookingState) {
@@ -187,6 +177,10 @@ public class BookingServiceImpl implements BookingService {
             case REJECTED:
                 bookings = bookingRepository.findByItemOwnerIdAndStatusOrderByStartDesc(
                         ownerId, BookingStatus.REJECTED, pageable);
+                break;
+            case CANCELED:
+                bookings = bookingRepository.findByItemOwnerIdAndStatusOrderByStartDesc(
+                        ownerId, BookingStatus.CANCELED, pageable);
                 break;
             default:
                 throw new ValidationException("Unknown state: " + state);
@@ -216,8 +210,25 @@ public class BookingServiceImpl implements BookingService {
             throw new ValidationException("End date must be after start date");
         }
 
-        if (bookingRequestDto.getStart().equals(bookingRequestDto.getEnd())) {
+        if (bookingRequestDto.getStart().isEqual(bookingRequestDto.getEnd())) {
             throw new ValidationException("Start and end dates cannot be the same");
+        }
+    }
+
+    private BookingState getBookingState(String state) {
+        try {
+            return BookingState.valueOf(state.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new ValidationException("Unknown state: " + state);
+        }
+    }
+
+    private void validatePaginationParams(int from, int size) {
+        if (from < 0) {
+            throw new ValidationException("Parameter 'from' must be >= 0");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Parameter 'size' must be > 0");
         }
     }
 }

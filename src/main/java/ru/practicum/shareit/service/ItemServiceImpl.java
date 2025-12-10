@@ -17,7 +17,6 @@ import ru.practicum.shareit.repository.UserRepository;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -103,14 +102,18 @@ public class ItemServiceImpl implements ItemService {
                             .end(booking.getEnd())
                             .build()
             ));
+        } else {
+            // Для не-владельца не показываем информацию о бронированиях
+            itemDto.setLastBooking(null);
+            itemDto.setNextBooking(null);
         }
 
         // Добавляем комментарии (видны всем)
-        List<CommentDto> comments = commentRepository.findByItemIdOrderByCreatedDesc(itemId)
-                .stream()
+        List<Comment> comments = commentRepository.findByItemIdOrderByCreatedDesc(itemId);
+        List<CommentDto> commentDtos = comments.stream()
                 .map(commentMapper::toDto)
                 .collect(Collectors.toList());
-        itemDto.setComments(comments);
+        itemDto.setComments(commentDtos);
 
         return itemDto;
     }
@@ -121,22 +124,12 @@ public class ItemServiceImpl implements ItemService {
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         List<Item> items = itemRepository.findByOwnerIdOrderById(ownerId);
-        List<Long> itemIds = items.stream().map(Item::getId).collect(Collectors.toList());
-
-        // Получаем все комментарии для всех вещей владельца
-        Map<Long, List<CommentDto>> commentsMap = commentRepository.findByItemIdInOrderByCreatedDesc(itemIds)
-                .stream()
-                .collect(Collectors.groupingBy(
-                        comment -> comment.getItem().getId(),
-                        Collectors.mapping(commentMapper::toDto, Collectors.toList())
-                ));
-
         LocalDateTime now = LocalDateTime.now();
 
         return items.stream().map(item -> {
             ItemOwnerDto itemDto = itemMapper.toOwnerDto(item);
 
-            // Добавляем информацию о бронированиях для владельца
+            // Находим последнее завершенное бронирование
             bookingRepository.findFirstByItemIdAndStatusAndStartBeforeOrderByStartDesc(
                     item.getId(), BookingStatus.APPROVED, now
             ).ifPresent(booking -> itemDto.setLastBooking(
@@ -148,6 +141,7 @@ public class ItemServiceImpl implements ItemService {
                             .build()
             ));
 
+            // Находим ближайшее будущее бронирование
             bookingRepository.findFirstByItemIdAndStatusAndStartAfterOrderByStartAsc(
                     item.getId(), BookingStatus.APPROVED, now
             ).ifPresent(booking -> itemDto.setNextBooking(
@@ -160,7 +154,11 @@ public class ItemServiceImpl implements ItemService {
             ));
 
             // Добавляем комментарии
-            itemDto.setComments(commentsMap.getOrDefault(item.getId(), Collections.emptyList()));
+            List<Comment> comments = commentRepository.findByItemIdOrderByCreatedDesc(item.getId());
+            List<CommentDto> commentDtos = comments.stream()
+                    .map(commentMapper::toDto)
+                    .collect(Collectors.toList());
+            itemDto.setComments(commentDtos);
 
             return itemDto;
         }).collect(Collectors.toList());

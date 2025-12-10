@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import java.util.List;
 
 @Data
 @Builder
@@ -25,5 +24,4 @@ public class ItemSimpleDto {
     private Boolean available;
 
     private Long requestId;
-    // Без информации о бронированиях и комментариях
 }

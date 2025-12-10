@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface BookingRepository extends JpaRepository<Booking, Long> {
-
     List<Booking> findByBookerIdOrderByStartDesc(Long bookerId, Pageable pageable);
 
     List<Booking> findByBookerIdAndStartBeforeAndEndAfterOrderByStartDesc(
@@ -41,14 +40,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     Optional<Booking> findFirstByItemIdAndStatusAndStartAfterOrderByStartAsc(
             Long itemId, BookingStatus status, LocalDateTime date);
 
-    List<Booking> findByItemIdAndBookerIdAndEndBeforeAndStatus(
-            Long itemId, Long bookerId, LocalDateTime end, BookingStatus status);
-
     @Query("SELECT b FROM Booking b " +
-            "WHERE b.item.owner.id = :ownerId " +
-            "AND b.status = :status " +
-            "ORDER BY b.start DESC")
-    List<Booking> findByOwnerIdAndStatus(@Param("ownerId") Long ownerId,
-                                         @Param("status") BookingStatus status,
-                                         Pageable pageable);
+            "WHERE b.item.id = :itemId " +
+            "AND b.booker.id = :bookerId " +
+            "AND b.end < :end " +
+            "AND b.status = :status")
+    List<Booking> findByItemIdAndBookerIdAndEndBeforeAndStatus(
+            @Param("itemId") Long itemId,
+            @Param("bookerId") Long bookerId,
+            @Param("end") LocalDateTime end,
+            @Param("status") BookingStatus status);
+
+    List<Booking> findByItemIdOrderByStartDesc(Long itemId);
 }

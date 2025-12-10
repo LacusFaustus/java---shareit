@@ -41,10 +41,9 @@ public class ItemController {
     }
 
     @GetMapping
-    public ResponseEntity<List<?>> getAllItemsByOwner(
+    public ResponseEntity<List<ItemOwnerDto>> getAllItemsByOwner(
             @RequestHeader("X-Sharer-User-Id") Long ownerId) {
-        // Возвращаем ItemOwnerDto для владельца, ItemDto для других
-        List<?> items = itemService.getAllItemsByOwner(ownerId);
+        List<ItemOwnerDto> items = itemService.getAllItemsByOwner(ownerId);
         return ResponseEntity.ok(items);
     }
 

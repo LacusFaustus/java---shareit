@@ -1,0 +1,93 @@
+users
+Create user - 201 Created (или 200 OK)
+
+Create user without email - 400 Bad Request (валидация email)
+
+Create 2 users with same email - 409 Conflict или 400 Bad Request
+
+Create user with invalid email - 400 Bad Request
+
+User update - 200 OK
+
+User update name - 200 OK
+
+User update email - 200 OK
+
+User update with existing email - 409 Conflict
+
+Get user - 200 OK
+
+User delete - 200 OK или 204 No Content
+
+items
+Item create - 201 Created (или 200 OK)
+
+Item create without X-Sharer-User-Id - 400 Bad Request (или 500 Internal Server Error)
+
+Item create with non-existent user - 404 Not Found
+
+Item create without available field - 400 Bad Request
+
+Item create with empty name field - 400 Bad Request
+
+Item create with empty description field - 400 Bad Request
+
+Item update - 200 OK
+
+Item update without X-Sharer-User-Id - 400 Bad Request (или 500)
+
+Item update with other user - 403 Forbidden или 404 Not Found
+
+Item update available field - 200 OK
+
+Item update description field - 200 OK
+
+Item update name field - 200 OK
+
+Item get - 200 OK
+
+Get all items from user - 200 OK
+
+Item search - 200 OK (с результатами)
+
+Item search unavailable - 200 OK (пустой список)
+
+Item search empty - 200 OK (пустой список)
+
+bookings
+Booking unavailable item - 400 Bad Request
+
+Booking create failed by wrong userId - 404 Not Found (или 500)
+
+Booking create failed by not found itemId - 404 Not Found
+
+Booking create failed by end in past - 400 Bad Request
+
+Booking create failed by start equal end - 400 Bad Request
+
+Booking create failed by start equal null - 400 Bad Request
+
+Booking create failed by end equal null - 400 Bad Request
+
+Booking create failed by start in past - 400 Bad Request
+
+Booking available item - 201 Created (или 200 OK)
+
+Booking approve - 200 OK
+
+Booking approve by wrong user - 403 Forbidden (или 400, 500)
+
+Get booking by booker - 200 OK
+
+Get booking by owner - 200 OK
+
+Get all bookings from wrong user - 404 Not Found (или 500)
+
+Get all user bookings - 200 OK
+
+comments
+Comment past booking - 201 Created (или 200 OK)
+
+Comment approved booking - 400 Bad Request (нельзя комментировать будущие бронирования)
+
+Get item with comments - 200 OK
