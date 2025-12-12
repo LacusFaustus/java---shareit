@@ -20,4 +20,5 @@ public class ItemRequestDto {
 
     private LocalDateTime created;
     private List<ItemDto> items;
+    private Long requestorId;
 }

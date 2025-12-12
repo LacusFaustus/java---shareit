@@ -1,71 +1,34 @@
 package ru.practicum.shareit.mapper;
 
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Component;
-import ru.practicum.shareit.dto.ItemDto;
-import ru.practicum.shareit.dto.ItemOwnerDto;
-import ru.practicum.shareit.dto.ItemResponseDto;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import ru.practicum.shareit.config.MapStructConfig;
+import ru.practicum.shareit.dto.*;
 import ru.practicum.shareit.model.Item;
 
-@Component
-@RequiredArgsConstructor
-public class ItemMapper {
+import java.util.List;
 
-    public Item toEntity(ItemDto itemDto) {
-        if (itemDto == null) {
-            return null;
-        }
+@Mapper(config = MapStructConfig.class)
+public interface ItemMapper {
 
-        Item item = new Item();
-        item.setName(itemDto.getName());
-        item.setDescription(itemDto.getDescription());
-        item.setAvailable(itemDto.getAvailable());
-        item.setRequestId(itemDto.getRequestId());
-        // owner устанавливается в сервисе
-        return item;
-    }
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "owner", ignore = true)
+    @Mapping(target = "comments", ignore = true)
+    Item toEntity(ItemDto itemDto);
 
-    public ItemDto toDto(Item item) {
-        if (item == null) {
-            return null;
-        }
+    ItemDto toDto(Item item);
 
-        return ItemDto.builder()
-                .id(item.getId())
-                .name(item.getName())
-                .description(item.getDescription())
-                .available(item.getAvailable())
-                .requestId(item.getRequestId())
-                .build();
-    }
+    @Mapping(target = "lastBooking", ignore = true)
+    @Mapping(target = "nextBooking", ignore = true)
+    @Mapping(target = "comments", ignore = true)
+    ItemResponseDto toResponseDto(Item item);
 
-    public ItemResponseDto toResponseDto(Item item) {
-        if (item == null) {
-            return null;
-        }
+    @Mapping(target = "lastBooking", ignore = true)
+    @Mapping(target = "nextBooking", ignore = true)
+    @Mapping(target = "comments", ignore = true)
+    ItemOwnerDto toOwnerDto(Item item);
 
-        return ItemResponseDto.builder()
-                .id(item.getId())
-                .name(item.getName())
-                .description(item.getDescription())
-                .available(item.getAvailable())
-                .requestId(item.getRequestId())
-                // lastBooking, nextBooking, comments устанавливаются в сервисе
-                .build();
-    }
+    List<ItemDto> toDtoList(List<Item> items);
 
-    public ItemOwnerDto toOwnerDto(Item item) {
-        if (item == null) {
-            return null;
-        }
-
-        return ItemOwnerDto.builder()
-                .id(item.getId())
-                .name(item.getName())
-                .description(item.getDescription())
-                .available(item.getAvailable())
-                .requestId(item.getRequestId())
-                // lastBooking, nextBooking, comments устанавливаются в сервисе
-                .build();
-    }
+    List<ItemOwnerDto> toOwnerDtoList(List<Item> items);
 }

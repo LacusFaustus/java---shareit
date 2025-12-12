@@ -1,33 +1,19 @@
 package ru.practicum.shareit.mapper;
 
-import org.springframework.stereotype.Component;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import ru.practicum.shareit.config.MapStructConfig;
 import ru.practicum.shareit.dto.ItemRequestDto;
 import ru.practicum.shareit.model.ItemRequest;
 
-@Component
-public class ItemRequestMapper {
+@Mapper(config = MapStructConfig.class)
+public interface ItemRequestMapper {
 
-    public ItemRequestDto toDto(ItemRequest itemRequest) {
-        if (itemRequest == null) {
-            return null;
-        }
+    @Mapping(target = "items", ignore = true)
+    @Mapping(source = "requestor.id", target = "requestorId")
+    ItemRequestDto toDto(ItemRequest itemRequest);
 
-        return ItemRequestDto.builder()
-                .id(itemRequest.getId())
-                .description(itemRequest.getDescription())
-                .created(itemRequest.getCreated())
-                .build();
-    }
-
-    public ItemRequest toEntity(ItemRequestDto itemRequestDto) {
-        if (itemRequestDto == null) {
-            return null;
-        }
-
-        ItemRequest itemRequest = new ItemRequest();
-        itemRequest.setId(itemRequestDto.getId());
-        itemRequest.setDescription(itemRequestDto.getDescription());
-        itemRequest.setCreated(itemRequestDto.getCreated());
-        return itemRequest;
-    }
+    @Mapping(target = "requestor", ignore = true)
+    @Mapping(target = "created", ignore = true)
+    ItemRequest toEntity(ItemRequestDto itemRequestDto);
 }
