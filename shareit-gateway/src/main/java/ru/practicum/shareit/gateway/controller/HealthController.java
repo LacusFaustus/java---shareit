@@ -16,7 +16,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class HealthController implements HealthIndicator {
 
-    private final RestTemplate loggingRestTemplate; // Используем loggingRestTemplate из LoggingConfig
+    private final RestTemplate restTemplate;
 
     @GetMapping("/health")
     public Map<String, String> getHealth() {
@@ -48,7 +48,7 @@ public class HealthController implements HealthIndicator {
     private boolean checkServerHealth() {
         try {
             String serverUrl = "http://localhost:9090/actuator/health";
-            ResponseEntity<String> response = loggingRestTemplate.getForEntity(serverUrl, String.class);
+            ResponseEntity<String> response = restTemplate.getForEntity(serverUrl, String.class);
             return response.getStatusCode().is2xxSuccessful();
         } catch (Exception e) {
             log.warn("Server health check failed: {}", e.getMessage());
