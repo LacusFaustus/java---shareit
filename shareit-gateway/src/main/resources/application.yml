@@ -1,0 +1,60 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: shareit-gateway
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    default-property-inclusion: non_null
+
+  cache:
+    type: caffeine
+    cache-names: items,users,bookings,itemRequests
+    caffeine:
+      spec: maximumSize=100,expireAfterAccess=600s
+
+  mvc:
+    async:
+      request-timeout: 5000
+
+shareit:
+  server:
+    url: http://localhost:9090
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    enable:
+      all: true
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+    instances:
+      shareItServer:
+        base-config: default
+
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 1s
+
+logging:
+  level:
+    ru.practicum.shareit.gateway: INFO
