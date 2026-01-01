@@ -34,16 +34,6 @@ public class GatewayConfig {
     }
 
     @Bean
-    public RestTemplate loggingRestTemplate() {
-        RestTemplate restTemplate = new RestTemplate(
-                new BufferingClientHttpRequestFactory(new SimpleClientHttpRequestFactory())
-        );
-
-        restTemplate.setInterceptors(Collections.singletonList(new LoggingInterceptor()));
-        return restTemplate;
-    }
-
-    @Bean
     public CacheManager cacheManager() {
         return new ConcurrentMapCacheManager(
                 "items",
