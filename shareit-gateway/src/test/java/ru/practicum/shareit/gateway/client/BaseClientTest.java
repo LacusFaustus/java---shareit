@@ -23,11 +23,12 @@ class BaseClientTest {
     @Mock
     private RestTemplate restTemplate;
     private TestBaseClient baseClient;
+    private final String BASE_URL = "http://localhost:9090";
 
     @BeforeEach
     void setUp() {
         when(restTemplate.getUriTemplateHandler()).thenReturn(null);
-        baseClient = new TestBaseClient("http://localhost:9090", restTemplate);
+        baseClient = new TestBaseClient(BASE_URL, restTemplate);
     }
 
     @Nested
@@ -39,7 +40,7 @@ class BaseClientTest {
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
 
             when(restTemplate.exchange(
-                    eq("/test"),
+                    eq(BASE_URL + "/test"),
                     eq(HttpMethod.GET),
                     any(HttpEntity.class),
                     eq(Object.class)
@@ -57,7 +58,7 @@ class BaseClientTest {
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(expectedResponse, HttpStatus.CREATED);
 
             when(restTemplate.exchange(
-                    eq("/test"),
+                    eq(BASE_URL + "/test"),
                     eq(HttpMethod.POST),
                     any(HttpEntity.class),
                     eq(Object.class)
@@ -75,7 +76,7 @@ class BaseClientTest {
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
 
             when(restTemplate.exchange(
-                    eq("/test/1"),
+                    eq(BASE_URL + "/test/1"),
                     eq(HttpMethod.PATCH),
                     any(HttpEntity.class),
                     eq(Object.class)
@@ -91,7 +92,7 @@ class BaseClientTest {
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(HttpStatus.NO_CONTENT);
 
             when(restTemplate.exchange(
-                    eq("/test/1"),
+                    eq(BASE_URL + "/test/1"),
                     eq(HttpMethod.DELETE),
                     any(HttpEntity.class),
                     eq(Object.class)
@@ -107,12 +108,12 @@ class BaseClientTest {
             String expectedResponse = "{\"id\":1,\"name\":\"Updated\"}";
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
 
-            doReturn(mockResponse).when(restTemplate).exchange(
-                    eq("/test/1"),
+            when(restTemplate.exchange(
+                    eq(BASE_URL + "/test/1"),
                     eq(HttpMethod.PUT),
                     any(HttpEntity.class),
                     eq(Object.class)
-            );
+            )).thenReturn(mockResponse);
 
             ResponseEntity<Object> result = baseClient.put("/test/1", 1L, requestBody);
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -125,13 +126,13 @@ class BaseClientTest {
             String expectedResponse = "{\"id\":1,\"name\":\"Updated\"}";
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
 
-            doReturn(mockResponse).when(restTemplate).exchange(
-                    eq("/test/1"),
+            when(restTemplate.exchange(
+                    eq(BASE_URL + "/test/1"),
                     eq(HttpMethod.PUT),
                     any(HttpEntity.class),
                     eq(Object.class),
                     any(Map.class)
-            );
+            )).thenReturn(mockResponse);
 
             ResponseEntity<Object> result = baseClient.put("/test/1", 1L, Map.of("param", "value"), requestBody);
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -144,12 +145,12 @@ class BaseClientTest {
             String expectedResponse = "{\"id\":1}";
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
 
-            doReturn(mockResponse).when(restTemplate).exchange(
-                    eq("/test"),
+            when(restTemplate.exchange(
+                    eq(BASE_URL + "/test"),
                     eq(HttpMethod.PATCH),
                     any(HttpEntity.class),
                     eq(Object.class)
-            );
+            )).thenReturn(mockResponse);
 
             ResponseEntity<Object> result = baseClient.patch("/test", requestBody);
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -160,12 +161,12 @@ class BaseClientTest {
         void delete_WithoutUserId_ReturnsResponse() {
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(HttpStatus.NO_CONTENT);
 
-            doReturn(mockResponse).when(restTemplate).exchange(
-                    eq("/test"),
+            when(restTemplate.exchange(
+                    eq(BASE_URL + "/test"),
                     eq(HttpMethod.DELETE),
                     any(HttpEntity.class),
                     eq(Object.class)
-            );
+            )).thenReturn(mockResponse);
 
             ResponseEntity<Object> result = baseClient.delete("/test");
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
@@ -176,13 +177,13 @@ class BaseClientTest {
             String expectedResponse = "{\"id\":1}";
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
 
-            doReturn(mockResponse).when(restTemplate).exchange(
-                    eq("/test?param={param}"),
+            when(restTemplate.exchange(
+                    eq(BASE_URL + "/test?param={param}"),
                     eq(HttpMethod.GET),
                     any(HttpEntity.class),
                     eq(Object.class),
                     any(Map.class)
-            );
+            )).thenReturn(mockResponse);
 
             ResponseEntity<Object> result = baseClient.get("/test?param={param}", 1L, Map.of("param", "value"));
             assertThat(result.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -195,7 +196,7 @@ class BaseClientTest {
             ResponseEntity<Object> mockResponse = new ResponseEntity<>(expectedResponse, HttpStatus.OK);
 
             when(restTemplate.exchange(
-                    eq("/test"),
+                    eq(BASE_URL + "/test"),
                     eq(HttpMethod.GET),
                     any(HttpEntity.class),
                     eq(Object.class)
@@ -349,7 +350,7 @@ class BaseClientTest {
             when(exception.getResponseBodyAsByteArray()).thenReturn("Not Found".getBytes());
 
             when(restTemplate.exchange(
-                    eq("/test"),
+                    eq(BASE_URL + "/test"),
                     eq(HttpMethod.GET),
                     any(HttpEntity.class),
                     eq(Object.class)
@@ -458,7 +459,7 @@ class BaseClientTest {
             Map<String, Object> parameters = Map.of("param1", "value1", "param2", "value2");
 
             when(restTemplate.exchange(
-                    eq("/test?param1={param1}&param2={param2}"),
+                    eq(BASE_URL + "/test?param1={param1}&param2={param2}"),
                     eq(HttpMethod.GET),
                     any(HttpEntity.class),
                     eq(Object.class),

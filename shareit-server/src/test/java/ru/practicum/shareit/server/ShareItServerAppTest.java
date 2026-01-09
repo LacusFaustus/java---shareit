@@ -1,7 +1,6 @@
 package ru.practicum.shareit.server;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
@@ -20,12 +19,9 @@ class ShareItServerAppTest {
 
     @Test
     void mainMethodStartsApplication() {
-        // Просто проверяем, что класс можно загрузить и он имеет аннотацию @SpringBootApplication
-        ShareItServerApp app = new ShareItServerApp();
-        assertThat(app).isNotNull();
-
-        // Проверяем аннотации класса
-        SpringBootApplication annotation = ShareItServerApp.class.getAnnotation(SpringBootApplication.class);
-        assertThat(annotation).isNotNull();
+        // Проверяем, что основной метод можно запустить
+        ShareItServerApp.main(new String[]{});
+        // Тест проходит, если приложение успешно стартует
+        // (в реальности Spring Boot тест уже запускает контекст)
     }
 }
