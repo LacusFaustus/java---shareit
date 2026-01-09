@@ -133,6 +133,10 @@ public class BookingServiceImpl implements BookingService {
                 bookings = bookingRepository.findByBookerIdAndStatusOrderByStartDesc(
                         userId, BookingStatus.WAITING, pageable);
                 break;
+            case APPROVED:
+                bookings = bookingRepository.findByBookerIdAndStatusOrderByStartDesc(
+                        userId, BookingStatus.APPROVED, pageable);
+                break;
             case REJECTED:
                 bookings = bookingRepository.findByBookerIdAndStatusOrderByStartDesc(
                         userId, BookingStatus.REJECTED, pageable);
@@ -182,6 +186,10 @@ public class BookingServiceImpl implements BookingService {
             case WAITING:
                 bookings = bookingRepository.findByItemOwnerIdAndStatusOrderByStartDesc(
                         ownerId, BookingStatus.WAITING, pageable);
+                break;
+            case APPROVED:
+                bookings = bookingRepository.findByItemOwnerIdAndStatusOrderByStartDesc(
+                        ownerId, BookingStatus.APPROVED, pageable);
                 break;
             case REJECTED:
                 bookings = bookingRepository.findByItemOwnerIdAndStatusOrderByStartDesc(

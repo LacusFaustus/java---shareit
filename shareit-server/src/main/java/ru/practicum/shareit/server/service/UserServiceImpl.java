@@ -3,6 +3,7 @@ package ru.practicum.shareit.server.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.dto.UserDto;
 import ru.practicum.shareit.server.exception.ConflictException;
 import ru.practicum.shareit.server.exception.NotFoundException;
@@ -17,11 +18,13 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final UserMapper userMapper;
 
     @Override
+    @Transactional
     public UserDto createUser(UserDto userDto) {
         log.info("Creating user with email: {}", userDto.getEmail());
 
@@ -31,15 +34,17 @@ public class UserServiceImpl implements UserService {
             throw new ConflictException("Email already exists");
         }
 
-        User user = new User();
-        user.setName(userDto.getName());
-        user.setEmail(userDto.getEmail());
+        User user = User.builder()
+                .name(userDto.getName())
+                .email(userDto.getEmail())
+                .build();
 
         User savedUser = userRepository.save(user);
         return userMapper.toDto(savedUser);
     }
 
     @Override
+    @Transactional
     public UserDto updateUser(Long userId, UserDto userDto) {
         log.info("Updating user ID: {}", userId);
 
@@ -84,6 +89,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional
     public void deleteUser(Long userId) {
         log.info("Deleting user ID: {}", userId);
 

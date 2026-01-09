@@ -28,30 +28,47 @@ public class HealthController implements HealthIndicator {
 
     @GetMapping("/health/detailed")
     public Map<String, Object> getDetailedHealth() {
-        boolean serverReachable = checkServerHealth();
+        try {
+            String serverUrl = "http://localhost:9090/actuator/health";
+            ResponseEntity<String> response = restTemplate.getForEntity(serverUrl, String.class);
 
-        String overallStatus = serverReachable ? "UP" : "DEGRADED";
-
-        return Map.of(
-                "overall", overallStatus,
-                "gateway", Map.of(
-                        "status", "UP",
-                        "service", "shareit-gateway"
-                ),
-                "server", Map.of(
-                        "reachable", serverReachable,
-                        "status", serverReachable ? "UP" : "DOWN"
-                )
-        );
+            // Сервер доступен и здоров (2xx)
+            if (response.getStatusCode().is2xxSuccessful()) {
+                return Map.of(
+                        "overall", "UP",
+                        "gateway", Map.of("status", "UP", "service", "shareit-gateway"),
+                        "server", Map.of("reachable", true, "status", "UP")
+                );
+            } else {
+                // Сервер доступен, но не здоров (4xx/5xx)
+                return Map.of(
+                        "overall", "DEGRADED",
+                        "gateway", Map.of("status", "UP", "service", "shareit-gateway"),
+                        "server", Map.of("reachable", true, "status", "DOWN")
+                );
+            }
+        } catch (Exception e) {
+            // Сервер недоступен
+            log.warn("Server health check failed: {}", e.getMessage());
+            return Map.of(
+                    "overall", "DEGRADED",
+                    "gateway", Map.of("status", "UP", "service", "shareit-gateway"),
+                    "server", Map.of("reachable", false, "status", "DOWN")
+            );
+        }
     }
 
     private boolean checkServerHealth() {
         try {
             String serverUrl = "http://localhost:9090/actuator/health";
             ResponseEntity<String> response = restTemplate.getForEntity(serverUrl, String.class);
-            return response.getStatusCode().is2xxSuccessful();
+
+            // Возвращаем true если получили любой HTTP ответ (даже с ошибкой)
+            // Это означает что сервер "достижим", но может быть в нерабочем состоянии
+            return true;
         } catch (Exception e) {
             log.warn("Server health check failed: {}", e.getMessage());
+            // Возвращаем false только если не можем получить ответ (таймаут, соединение разорвано и т.д.)
             return false;
         }
     }

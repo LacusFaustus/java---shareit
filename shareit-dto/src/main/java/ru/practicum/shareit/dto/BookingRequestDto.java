@@ -8,6 +8,8 @@ import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.Future;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import java.time.LocalDateTime;
 
 @Data
@@ -26,6 +28,7 @@ public class BookingRequestDto {
     @Future(message = "End date must be in future")
     private LocalDateTime end;
 
+    @JsonIgnore
     public boolean isValid() {
         return end != null && start != null && end.isAfter(start);
     }

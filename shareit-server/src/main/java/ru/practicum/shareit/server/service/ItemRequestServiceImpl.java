@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.dto.ItemDto;
@@ -78,13 +79,20 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        if (from < 0 || size <= 0) {
-            throw new ValidationException("Invalid pagination parameters: from=" + from + ", size=" + size);
+        if (from < 0) {
+            throw new ValidationException("Parameter 'from' must not be negative");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Parameter 'size' must be positive");
+        }
+        if (size > 100) {
+            throw new ValidationException("Parameter 'size' must not exceed 100");
         }
 
-        Pageable pageable = PageRequest.of(from / size, size, Sort.by(Sort.Direction.DESC, "created"));
+        int pageNumber = from / size;
+        Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(Sort.Direction.DESC, "created"));
 
-        // Используем корректный метод репозитория
+        // Используем нативный запрос для надежности
         Page<ItemRequest> requestsPage = itemRequestRepository.findByRequestorIdNot(userId, pageable);
 
         return requestsPage.getContent().stream()

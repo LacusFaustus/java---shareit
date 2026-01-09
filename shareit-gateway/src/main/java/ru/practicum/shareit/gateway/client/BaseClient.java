@@ -11,13 +11,16 @@ import java.util.Map;
 
 public abstract class BaseClient {
     protected final RestTemplate rest;
+    protected final String serverUrl;
 
     public BaseClient(RestTemplate rest) {
         this.rest = rest;
+        this.serverUrl = "";
     }
 
     public BaseClient(String serverUrl, RestTemplate rest) {
         this.rest = rest;
+        this.serverUrl = serverUrl;  // Сохраняем базовый URL
         if (rest.getUriTemplateHandler() == null) {
             rest.setUriTemplateHandler(new DefaultUriBuilderFactory(serverUrl));
         }
@@ -83,12 +86,14 @@ public abstract class BaseClient {
                                                           @Nullable Map<String, Object> parameters, @Nullable T body) {
         HttpEntity<T> requestEntity = new HttpEntity<>(body, defaultHeaders(userId));
 
+        String url = serverUrl + path;  // Объединяем базовый URL и путь
+
         ResponseEntity<Object> shareitServerResponse;
         try {
             if (parameters != null) {
-                shareitServerResponse = rest.exchange(path, method, requestEntity, Object.class, parameters);
+                shareitServerResponse = rest.exchange(url, method, requestEntity, Object.class, parameters);
             } else {
-                shareitServerResponse = rest.exchange(path, method, requestEntity, Object.class);
+                shareitServerResponse = rest.exchange(url, method, requestEntity, Object.class);
             }
         } catch (HttpStatusCodeException e) {
             return ResponseEntity.status(e.getStatusCode()).body(e.getResponseBodyAsByteArray());
@@ -107,6 +112,12 @@ public abstract class BaseClient {
     }
 
     private static ResponseEntity<Object> prepareGatewayResponse(ResponseEntity<Object> response) {
+        // Защита от null
+        if (response == null) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Internal server error: null response");
+        }
+
         if (response.getStatusCode().is2xxSuccessful()) {
             return response;
         }
