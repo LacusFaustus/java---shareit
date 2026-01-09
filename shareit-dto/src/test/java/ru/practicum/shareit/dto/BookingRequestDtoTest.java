@@ -410,17 +410,18 @@ class BookingRequestDtoTest {
 
     @Test
     void testEquals_WithNullFields() {
-        // Тест для equals когда у одного объекта поле null
+        LocalDateTime sameTime = LocalDateTime.now();
+
         BookingRequestDto dto1 = BookingRequestDto.builder()
                 .itemId(1L)
                 .start(null)
-                .end(LocalDateTime.now())
+                .end(sameTime)
                 .build();
 
         BookingRequestDto dto2 = BookingRequestDto.builder()
                 .itemId(1L)
                 .start(null)
-                .end(LocalDateTime.now())
+                .end(sameTime)
                 .build();
 
         assertEquals(dto1, dto2);
