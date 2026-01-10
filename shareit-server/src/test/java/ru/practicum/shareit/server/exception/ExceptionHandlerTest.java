@@ -1,92 +1,72 @@
 package ru.practicum.shareit.server.exception;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.boot.test.web.server.LocalServerPort;
-import org.springframework.http.*;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.shareit.dto.UserDto;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
+import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SuppressWarnings("unchecked")
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-@Transactional
-@ActiveProfiles("test")
 class ExceptionHandlerTest {
 
-    @LocalServerPort
-    private int port;
-
-    @Autowired
-    private TestRestTemplate restTemplate;
+    private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
 
     @Test
-    void handleValidationException_ReturnsBadRequestStatus() {
-        String url = "http://localhost:" + port + "/users";
+    void handleNotFoundException_ReturnsNotFoundResponse() {
+        NotFoundException exception = new NotFoundException("User not found");
 
-        // Пытаемся создать пользователя с невалидным email
-        UserDto invalidUser = UserDto.builder()
-                .name("Test User")
-                .email("invalid-email") // Некорректный email
-                .build();
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<UserDto> entity = new HttpEntity<>(invalidUser, headers);
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(url, entity, (Class<Map<String, Object>>) (Class<?>) Map.class);
-
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(response.getBody()).containsKeys("error", "status", "timestamp");
-        assertThat(response.getBody().get("error")).asString().contains("Invalid email");
-    }
-
-    @Test
-    void handleNotFoundException_ReturnsNotFoundStatus() {
-        // Попытка получить несуществующего пользователя
-        String url = "http://localhost:" + port + "/users/999999";
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.getForEntity(url, (Class<Map<String, Object>>) (Class<?>) Map.class);
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleNotFoundException(exception);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(response.getBody()).containsKeys("error", "status", "timestamp");
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().get("error")).isEqualTo("User not found");
+        assertThat(response.getBody().get("status")).isEqualTo("404 NOT_FOUND");
+        assertThat(response.getBody().get("timestamp")).isInstanceOf(LocalDateTime.class);
     }
 
     @Test
-    void handleConflictException_ReturnsConflictStatus() {
-        String url = "http://localhost:" + port + "/users";
+    void handleValidationException_ReturnsBadRequestResponse() {
+        ValidationException exception = new ValidationException("Invalid email format");
 
-        // Создаем пользователя с уникальным email
-        String email = "duplicate-" + UUID.randomUUID() + "@example.com";
-        UserDto user1 = UserDto.builder()
-                .name("User 1")
-                .email(email)
-                .build();
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleValidationException(exception);
 
-        ResponseEntity<UserDto> firstResponse = restTemplate.postForEntity(url, user1, UserDto.class);
-        assertThat(firstResponse.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(response.getBody().get("error")).isEqualTo("Invalid email format");
+        assertThat(response.getBody().get("status")).isEqualTo("400 BAD_REQUEST");
+    }
 
-        // Пытаемся создать пользователя с тем же email
-        UserDto user2 = UserDto.builder()
-                .name("User 2")
-                .email(email)
-                .build();
+    @Test
+    void handleConflictException_ReturnsConflictResponse() {
+        ConflictException exception = new ConflictException("Email already exists");
 
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        HttpEntity<UserDto> entity = new HttpEntity<>(user2, headers);
-
-        ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(url, entity, (Class<Map<String, Object>>) (Class<?>) Map.class);
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleConflictException(exception);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
-        assertThat(response.getBody()).containsKeys("error", "status", "timestamp");
-        assertThat(response.getBody().get("error")).asString().contains("Email already exists");
+        assertThat(response.getBody().get("error")).isEqualTo("Email already exists");
+        assertThat(response.getBody().get("status")).isEqualTo("409 CONFLICT");
+    }
+
+    @Test
+    void handleForbiddenException_ReturnsForbiddenResponse() {
+        ForbiddenException exception = new ForbiddenException("Access denied");
+
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleForbiddenException(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody().get("error")).isEqualTo("Access denied");
+        assertThat(response.getBody().get("status")).isEqualTo("403 FORBIDDEN");
+    }
+
+    @Test
+    void handleOtherExceptions_ReturnsInternalServerError() {
+        Exception exception = new RuntimeException("Database connection failed");
+
+        ResponseEntity<Map<String, Object>> response = exceptionHandler.handleOtherExceptions(exception);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+        assertThat(response.getBody().get("error")).isEqualTo("Internal server error");
+        assertThat(response.getBody().get("status")).isEqualTo("500 INTERNAL_SERVER_ERROR");
     }
 }
