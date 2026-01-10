@@ -3,9 +3,13 @@ package ru.practicum.shareit.server.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.dto.UserDto;
+import ru.practicum.shareit.server.BaseIntegrationTest;
+import ru.practicum.shareit.server.ShareItServerApp;
 import ru.practicum.shareit.server.exception.ConflictException;
 import ru.practicum.shareit.server.exception.NotFoundException;
 import ru.practicum.shareit.server.exception.ValidationException;
@@ -16,10 +20,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@Transactional
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
-class UserServiceTest {
+@TestPropertySource(locations = "classpath:application-test.properties")
+@Transactional
+class UserServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private UserService userService;

@@ -2,12 +2,15 @@ package ru.practicum.shareit.server.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.w3c.dom.DOMImplementationList;
 
 import java.time.LocalDateTime;
 
 @Data
+@Builder
 @Entity
 @Table(name = "bookings")
 @NoArgsConstructor

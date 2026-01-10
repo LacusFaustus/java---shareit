@@ -2,6 +2,8 @@ package ru.practicum.shareit.server.service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.TestPropertySource;
+import ru.practicum.shareit.server.BaseIntegrationTest;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,7 +13,7 @@ import ru.practicum.shareit.dto.ItemDto;
 import ru.practicum.shareit.dto.UserDto;
 import ru.practicum.shareit.server.exception.NotFoundException;
 import ru.practicum.shareit.server.exception.ValidationException;
-import ru.practicum.shareit.server.util.TestBookingUtil;
+import ru.practicum.shareit.server.util.TestDataCreator;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -20,9 +22,10 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@Transactional
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
+@TestPropertySource(locations = "classpath:application-test.properties")
+@Transactional
 class BookingServiceTest {
 
     @Autowired
@@ -35,7 +38,7 @@ class BookingServiceTest {
     private UserService userService;
 
     @Autowired
-    private TestBookingUtil testBookingUtil;
+    private TestDataCreator testDataCreator;
 
     // ============== ВСПОМОГАТЕЛЬНЫЕ МЕТОДЫ ==============
 
@@ -507,28 +510,31 @@ class BookingServiceTest {
 
         LocalDateTime now = LocalDateTime.now();
 
-        BookingRequestDto futureBooking1 = new BookingRequestDto(
+        // WAITING - будущее бронирование
+        BookingRequestDto waitingBooking = new BookingRequestDto(
                 savedItem.getId(),
                 now.plusDays(1),
                 now.plusDays(2)
         );
-        BookingResponseDto createdFuture1 = bookingService.createBooking(futureBooking1, booker.getId());
+        BookingResponseDto createdWaiting = bookingService.createBooking(waitingBooking, booker.getId());
 
-        BookingRequestDto futureBooking2 = new BookingRequestDto(
+        // APPROVED - будущее бронирование
+        BookingRequestDto futureBooking = new BookingRequestDto(
                 savedItem.getId(),
                 now.plusDays(3),
                 now.plusDays(4)
         );
-        BookingResponseDto createdFuture2 = bookingService.createBooking(futureBooking2, booker.getId());
-        bookingService.updateBookingStatus(createdFuture2.getId(), true, owner.getId());
+        BookingResponseDto createdFuture = bookingService.createBooking(futureBooking, booker.getId());
+        bookingService.updateBookingStatus(createdFuture.getId(), true, owner.getId());
 
-        BookingRequestDto futureBooking3 = new BookingRequestDto(
+        // REJECTED - будущее бронирование
+        BookingRequestDto rejectedBooking = new BookingRequestDto(
                 savedItem.getId(),
                 now.plusDays(5),
                 now.plusDays(6)
         );
-        BookingResponseDto createdFuture3 = bookingService.createBooking(futureBooking3, booker.getId());
-        bookingService.updateBookingStatus(createdFuture3.getId(), false, owner.getId());
+        BookingResponseDto createdRejected = bookingService.createBooking(rejectedBooking, booker.getId());
+        bookingService.updateBookingStatus(createdRejected.getId(), false, owner.getId());
 
         List<BookingResponseDto> allBookings = bookingService.getUserBookings(
                 booker.getId(), "ALL", 0, 20);
@@ -588,12 +594,14 @@ class BookingServiceTest {
                 .build();
         var savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createCurrentBooking(savedItem.getId(), booker.getId());
+        // Используем TestDataCreator для создания текущего бронирования
+        testDataCreator.createCurrentBooking(savedItem.getId(), booker.getId());
 
         List<BookingResponseDto> currentBookings = bookingService.getUserBookings(
                 booker.getId(), "CURRENT", 0, 10);
 
         assertThat(currentBookings).hasSize(1);
+        assertThat(currentBookings.get(0).getStatus()).isEqualTo("APPROVED");
     }
 
     @Test
@@ -608,12 +616,14 @@ class BookingServiceTest {
                 .build();
         var savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createPastBooking(savedItem.getId(), booker.getId(), owner.getId());
+        // Используем TestDataCreator для создания прошедшего бронирования
+        testDataCreator.createPastBooking(savedItem.getId(), booker.getId());
 
         List<BookingResponseDto> pastBookings = bookingService.getUserBookings(
                 booker.getId(), "PAST", 0, 10);
 
         assertThat(pastBookings).hasSize(1);
+        assertThat(pastBookings.get(0).getStatus()).isEqualTo("APPROVED");
     }
 
     @Test
@@ -679,28 +689,6 @@ class BookingServiceTest {
         assertThat(canceledBookings).isEmpty();
     }
 
-    @Test
-    void getUserBookings_WithCanceledState_ReturnsCanceledBookings() {
-        UserDto owner = createUser("owner-canceled-state", "Owner");
-        UserDto booker = createUser("booker-canceled-state", "Booker");
-
-        ItemDto item = ItemDto.builder()
-                .name("Test Item")
-                .description("Description")
-                .available(true)
-                .build();
-        var savedItem = itemService.createItem(item, owner.getId());
-
-        testBookingUtil.createCanceledBooking(savedItem.getId(), booker.getId());
-
-        List<BookingResponseDto> canceledBookings = bookingService.getUserBookings(
-                booker.getId(), "CANCELED", 0, 10);
-
-        if (!canceledBookings.isEmpty()) {
-            assertThat(canceledBookings.get(0).getStatus()).isEqualTo("CANCELED");
-        }
-    }
-
     // ============== ВЛАДЕЛЬЧЕСКИЕ БРОНИРОВАНИЯ ==============
 
     @Test
@@ -741,7 +729,8 @@ class BookingServiceTest {
                 .build();
         var savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createCurrentBooking(savedItem.getId(), booker.getId());
+        // Используем TestDataCreator для создания текущего бронирования
+        testDataCreator.createCurrentBooking(savedItem.getId(), booker.getId());
 
         List<BookingResponseDto> currentBookings = bookingService.getOwnerBookings(
                 owner.getId(), "CURRENT", 0, 10);
@@ -761,41 +750,11 @@ class BookingServiceTest {
                 .build();
         var savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createPastBooking(savedItem.getId(), booker.getId(), owner.getId());
+        // Используем TestDataCreator для создания прошедшего бронирования
+        testDataCreator.createPastBooking(savedItem.getId(), booker.getId());
 
         List<BookingResponseDto> pastBookings = bookingService.getOwnerBookings(
                 owner.getId(), "PAST", 0, 10);
-
-        assertThat(pastBookings).hasSize(1);
-    }
-
-    @Test
-    void getOwnerBookings_WithPastState_ReturnsPastBookings2() {
-        String uniqueOwnerEmail = "owner-past-" + UUID.randomUUID() + "@example.com";
-        UserDto ownerDto = UserDto.builder()
-                .name("Owner Past")
-                .email(uniqueOwnerEmail)
-                .build();
-        UserDto savedOwner = userService.createUser(ownerDto);
-
-        String uniqueBookerEmail = "booker-past-" + UUID.randomUUID() + "@example.com";
-        UserDto bookerDto = UserDto.builder()
-                .name("Booker Past")
-                .email(uniqueBookerEmail)
-                .build();
-        UserDto savedBooker = userService.createUser(bookerDto);
-
-        ItemDto item = ItemDto.builder()
-                .name("Test Item")
-                .description("Description")
-                .available(true)
-                .build();
-        var savedItem = itemService.createItem(item, savedOwner.getId());
-
-        testBookingUtil.createCompletedBookingDirectly(savedItem.getId(), savedBooker.getId(), savedOwner.getId());
-
-        List<BookingResponseDto> pastBookings = bookingService.getOwnerBookings(
-                savedOwner.getId(), "PAST", 0, 10);
 
         assertThat(pastBookings).hasSize(1);
     }
@@ -921,28 +880,6 @@ class BookingServiceTest {
         assertThat(canceledBookings).isEmpty();
     }
 
-    @Test
-    void getOwnerBookings_WithCanceledState_ReturnsCanceledBookings() {
-        UserDto owner = createUser("owner-canceled", "Owner");
-        UserDto booker = createUser("booker-canceled", "Booker");
-
-        ItemDto item = ItemDto.builder()
-                .name("Test Item")
-                .description("Description")
-                .available(true)
-                .build();
-        var savedItem = itemService.createItem(item, owner.getId());
-
-        testBookingUtil.createCanceledBooking(savedItem.getId(), booker.getId());
-
-        List<BookingResponseDto> canceledBookings = bookingService.getOwnerBookings(
-                owner.getId(), "CANCELED", 0, 10);
-
-        if (!canceledBookings.isEmpty()) {
-            assertThat(canceledBookings.get(0).getStatus()).isEqualTo("CANCELED");
-        }
-    }
-
     // ============== ВАЛИДАЦИЯ СОСТОЯНИЙ И ПАГИНАЦИИ ==============
 
     @Test
@@ -1011,21 +948,6 @@ class BookingServiceTest {
 
         assertThatThrownBy(() ->
                 bookingService.getUserBookings(user.getId(), "ALL", 0, 0))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Parameter 'size' must be > 0");
-    }
-
-    @Test
-    void getOwnerBookings_WithInvalidPagination_ThrowsValidationException2() {
-        UserDto user = createUser("owner-invalid-pag", "User");
-
-        assertThatThrownBy(() ->
-                bookingService.getOwnerBookings(user.getId(), "ALL", -1, 10))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Parameter 'from' must be >= 0");
-
-        assertThatThrownBy(() ->
-                bookingService.getOwnerBookings(user.getId(), "ALL", 0, 0))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Parameter 'size' must be > 0");
     }

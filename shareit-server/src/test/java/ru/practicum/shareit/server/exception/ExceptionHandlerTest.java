@@ -15,6 +15,7 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+@SuppressWarnings("unchecked")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @Transactional
 @ActiveProfiles("test")
@@ -40,7 +41,7 @@ class ExceptionHandlerTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<UserDto> entity = new HttpEntity<>(invalidUser, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+        ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(url, entity, (Class<Map<String, Object>>) (Class<?>) Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(response.getBody()).containsKeys("error", "status", "timestamp");
@@ -52,7 +53,7 @@ class ExceptionHandlerTest {
         // Попытка получить несуществующего пользователя
         String url = "http://localhost:" + port + "/users/999999";
 
-        ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+        ResponseEntity<Map<String, Object>> response = restTemplate.getForEntity(url, (Class<Map<String, Object>>) (Class<?>) Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).containsKeys("error", "status", "timestamp");
@@ -82,7 +83,7 @@ class ExceptionHandlerTest {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<UserDto> entity = new HttpEntity<>(user2, headers);
 
-        ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+        ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(url, entity, (Class<Map<String, Object>>) (Class<?>) Map.class);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
         assertThat(response.getBody()).containsKeys("error", "status", "timestamp");

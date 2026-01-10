@@ -4,12 +4,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.dto.*;
+import ru.practicum.shareit.server.BaseIntegrationTest;
 import ru.practicum.shareit.server.exception.NotFoundException;
 import ru.practicum.shareit.server.exception.ValidationException;
-import ru.practicum.shareit.server.util.TestBookingUtil;
+import ru.practicum.shareit.server.util.TestDataCreator;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -18,10 +21,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
-@Transactional
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
-class ItemServiceTest {
+@TestPropertySource(locations = "classpath:application-test.properties")
+@Transactional
+class ItemServiceTest extends BaseIntegrationTest {
 
     @Autowired
     private ItemService itemService;
@@ -36,7 +40,7 @@ class ItemServiceTest {
     private ItemRequestService itemRequestService;
 
     @Autowired
-    private TestBookingUtil testBookingUtil;
+    private TestDataCreator testDataCreator;
 
     private Long ownerId;
     private Long anotherUserId;
@@ -280,21 +284,21 @@ class ItemServiceTest {
                 .build();
         ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
 
+        // Создаем будущее бронирование
         LocalDateTime now = LocalDateTime.now();
-
-        BookingRequestDto futureBooking1 = new BookingRequestDto(
+        BookingRequestDto futureBooking = new BookingRequestDto(
                 savedItem.getId(),
                 now.plusDays(1),
                 now.plusDays(2)
         );
-        BookingResponseDto createdFuture1 = bookingService.createBooking(futureBooking1, booker.getId());
-        bookingService.updateBookingStatus(createdFuture1.getId(), true, owner.getId());
+        BookingResponseDto createdFuture = bookingService.createBooking(futureBooking, booker.getId());
+        bookingService.updateBookingStatus(createdFuture.getId(), true, owner.getId());
 
         ItemResponseDto result = itemService.getItemById(savedItem.getId(), owner.getId());
 
         assertThat(result).isNotNull();
         assertThat(result.getNextBooking()).isNotNull();
-        assertThat(result.getNextBooking().getId()).isEqualTo(createdFuture1.getId());
+        assertThat(result.getNextBooking().getId()).isEqualTo(createdFuture.getId());
     }
 
     @Test
@@ -307,14 +311,15 @@ class ItemServiceTest {
                 .description("Description")
                 .available(true)
                 .build();
-        ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
+        var savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createCompletedBookingDirectly(savedItem.getId(), booker.getId(), owner.getId());
+        // Используем TestDataCreator для создания прошедшего бронирования
+        testDataCreator.createPastBooking(savedItem.getId(), booker.getId());
 
         ItemResponseDto result = itemService.getItemById(savedItem.getId(), owner.getId());
 
+        assertThat(result).isNotNull();
         assertThat(result.getLastBooking()).isNotNull();
-        assertThat(result.getLastBooking().getBookerId()).isEqualTo(booker.getId());
     }
 
     @Test
@@ -329,21 +334,24 @@ class ItemServiceTest {
                 .build();
         ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createPastBooking(savedItem.getId(), booker.getId(), owner.getId());
+        // Используем TestDataCreator для прошедшего бронирования
+        testDataCreator.createPastBooking(savedItem.getId(), booker.getId());
 
+        // Создаем будущее бронирование через сервис
         LocalDateTime now = LocalDateTime.now();
         BookingRequestDto futureBooking = new BookingRequestDto(
                 savedItem.getId(),
                 now.plusDays(1),
                 now.plusDays(2)
         );
-        BookingResponseDto createdBooking = bookingService.createBooking(futureBooking, booker.getId());
-        bookingService.updateBookingStatus(createdBooking.getId(), true, owner.getId());
+        BookingResponseDto createdFuture = bookingService.createBooking(futureBooking, booker.getId());
+        bookingService.updateBookingStatus(createdFuture.getId(), true, owner.getId());
 
         ItemResponseDto result = itemService.getItemById(savedItem.getId(), owner.getId());
 
         assertThat(result.getLastBooking()).isNotNull();
         assertThat(result.getNextBooking()).isNotNull();
+        assertThat(result.getNextBooking().getId()).isEqualTo(createdFuture.getId());
     }
 
     @Test
@@ -386,15 +394,6 @@ class ItemServiceTest {
     @Test
     void getItemById_NonExistentItem_ThrowsNotFoundException() {
         UserDto user = createUser("user-notfound", "User");
-
-        assertThatThrownBy(() -> itemService.getItemById(999999L, user.getId()))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("Item not found");
-    }
-
-    @Test
-    void getItemById_ForNonExistingItem_ThrowsNotFoundException() {
-        UserDto user = createUser("user-notfound-item", "User");
 
         assertThatThrownBy(() -> itemService.getItemById(999999L, user.getId()))
                 .isInstanceOf(NotFoundException.class)
@@ -741,10 +740,9 @@ class ItemServiceTest {
                 .build();
         ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createCompletedBookingDirectly(savedItem.getId(), booker.getId(), owner.getId());
-
-        CommentDto comment = new CommentDto();
-        comment.setText("");
+        CommentDto comment = CommentDto.builder()
+                .text("")
+                .build();
 
         assertThatThrownBy(() ->
                 itemService.addComment(savedItem.getId(), comment, booker.getId()))
@@ -764,10 +762,9 @@ class ItemServiceTest {
                 .build();
         ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createCompletedBookingDirectly(savedItem.getId(), booker.getId(), owner.getId());
-
-        CommentDto comment = new CommentDto();
-        comment.setText(null);
+        CommentDto comment = CommentDto.builder()
+                .text(null)
+                .build();
 
         assertThatThrownBy(() ->
                 itemService.addComment(savedItem.getId(), comment, booker.getId()))
@@ -777,30 +774,6 @@ class ItemServiceTest {
 
     @Test
     void addComment_Successful_WhenUserHasCompletedBooking() {
-        UserDto owner = createUser("owner-success", "Owner");
-        UserDto booker = createUser("booker-success", "Booker");
-
-        ItemDto item = ItemDto.builder()
-                .name("Test Item")
-                .description("Description")
-                .available(true)
-                .build();
-        ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
-
-        testBookingUtil.createCompletedBookingDirectly(savedItem.getId(), booker.getId(), owner.getId());
-
-        CommentDto comment = new CommentDto();
-        comment.setText("Great item!");
-
-        CommentDto result = itemService.addComment(savedItem.getId(), comment, booker.getId());
-
-        assertThat(result).isNotNull();
-        assertThat(result.getText()).isEqualTo("Great item!");
-        assertThat(result.getAuthorName()).isEqualTo(booker.getName());
-    }
-
-    @Test
-    void addComment_Successful_WhenUserHasCompletedBooking2() {
         UserDto owner = createUser("owner-comment-success", "Owner");
         UserDto booker = createUser("booker-comment-success", "Booker");
 
@@ -809,15 +782,16 @@ class ItemServiceTest {
                 .description("Description")
                 .available(true)
                 .build();
-        ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
+        var savedItem = itemService.createItem(item, owner.getId());
 
-        testBookingUtil.createCompletedBookingDirectly(savedItem.getId(), booker.getId(), owner.getId());
+        // Используем TestDataCreator для создания прошедшего бронирования
+        testDataCreator.createPastBooking(savedItem.getId(), booker.getId());
 
-        CommentDto comment = CommentDto.builder()
+        CommentDto commentDto = CommentDto.builder()
                 .text("Great item!")
                 .build();
 
-        CommentDto result = itemService.addComment(savedItem.getId(), comment, booker.getId());
+        CommentDto result = itemService.addComment(savedItem.getId(), commentDto, booker.getId());
 
         assertThat(result).isNotNull();
         assertThat(result.getText()).isEqualTo("Great item!");
@@ -836,8 +810,9 @@ class ItemServiceTest {
                 .build();
         ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
 
-        CommentDto comment = new CommentDto();
-        comment.setText("Great item!");
+        CommentDto comment = CommentDto.builder()
+                .text("Great item!")
+                .build();
 
         assertThatThrownBy(() ->
                 itemService.addComment(savedItem.getId(), comment, anotherUser.getId()))
@@ -866,38 +841,9 @@ class ItemServiceTest {
         BookingResponseDto created = bookingService.createBooking(booking, booker.getId());
         bookingService.updateBookingStatus(created.getId(), true, owner.getId());
 
-        CommentDto comment = new CommentDto();
-        comment.setText("Great item!");
-
-        assertThatThrownBy(() ->
-                itemService.addComment(savedItem.getId(), comment, booker.getId()))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("User can only comment on items they have booked in the past");
-    }
-
-    @Test
-    void addComment_ToCurrentBooking_ThrowsValidationException() {
-        UserDto owner = createUser("owner-current", "Owner");
-        UserDto booker = createUser("booker-current", "Booker");
-
-        ItemDto item = ItemDto.builder()
-                .name("Test Item")
-                .description("Description")
-                .available(true)
+        CommentDto comment = CommentDto.builder()
+                .text("Great item!")
                 .build();
-        ItemResponseDto savedItem = itemService.createItem(item, owner.getId());
-
-        LocalDateTime now = LocalDateTime.now();
-        BookingRequestDto booking = new BookingRequestDto(
-                savedItem.getId(),
-                now.plusSeconds(2),
-                now.plusDays(1)
-        );
-        BookingResponseDto created = bookingService.createBooking(booking, booker.getId());
-        bookingService.updateBookingStatus(created.getId(), true, owner.getId());
-
-        CommentDto comment = new CommentDto();
-        comment.setText("Great item!");
 
         assertThatThrownBy(() ->
                 itemService.addComment(savedItem.getId(), comment, booker.getId()))

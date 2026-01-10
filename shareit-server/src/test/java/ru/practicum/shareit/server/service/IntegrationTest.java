@@ -3,21 +3,25 @@ package ru.practicum.shareit.server.service;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.dto.ItemDto;
 import ru.practicum.shareit.dto.ItemRequestDto;
 import ru.practicum.shareit.dto.UserDto;
+import ru.practicum.shareit.server.BaseIntegrationTest;
 
 import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest
-@Transactional
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @ActiveProfiles("test")
-class IntegrationTest {
+@TestPropertySource(locations = "classpath:application-test.properties")
+@Transactional
+class IntegrationTest extends BaseIntegrationTest {
 
     @Autowired
     private ItemRequestService itemRequestService;

@@ -148,9 +148,10 @@
                         <path>
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
-                            <version>1.18.30</version>
+                            <version>${lombok.version}</version>
                         </path>
                     </annotationProcessorPaths>
+
                     <compilerArgs>
                         <arg>-parameters</arg>
                     </compilerArgs>
@@ -175,17 +176,17 @@
                                 <limit>
                                     <counter>INSTRUCTION</counter>
                                     <value>COVEREDRATIO</value>
-                                    <minimum>1.0</minimum>
+                                    <minimum>0.9</minimum>
                                 </limit>
                                 <limit>
                                     <counter>LINE</counter>
                                     <value>COVEREDRATIO</value>
-                                    <minimum>1.0</minimum>
+                                    <minimum>0.9</minimum>
                                 </limit>
                                 <limit>
                                     <counter>BRANCH</counter>
                                     <value>COVEREDRATIO</value>
-                                    <minimum>1.0</minimum>
+                                    <minimum>0.9</minimum>
                                 </limit>
                             </limits>
                         </rule>

@@ -6,7 +6,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.shareit.dto.ItemDto;
@@ -22,6 +21,7 @@ import ru.practicum.shareit.server.repository.ItemRequestRepository;
 import ru.practicum.shareit.server.repository.UserRepository;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -41,12 +41,9 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     public ItemRequestDto createItemRequest(ItemRequestDto itemRequestDto, Long userId) {
         log.info("Creating item request by user ID: {}", userId);
 
-        if (itemRequestDto.getDescription() == null || itemRequestDto.getDescription().isBlank()) {
-            throw new ValidationException("Item request description cannot be empty");
-        }
+        validateItemRequestDto(itemRequestDto);
 
-        User requestor = userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        User requestor = getUserById(userId);
 
         ItemRequest itemRequest = itemRequestMapper.toEntity(itemRequestDto);
         itemRequest.setRequestor(requestor);
@@ -62,8 +59,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     public List<ItemRequestDto> getUserItemRequests(Long userId) {
         log.info("Getting item requests for user ID: {}", userId);
 
-        userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        validateUserExists(userId);
 
         List<ItemRequest> requests = itemRequestRepository.findByRequestorIdOrderByCreatedDesc(userId);
 
@@ -76,23 +72,12 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     public List<ItemRequestDto> getAllItemRequests(Long userId, int from, int size) {
         log.info("Getting all item requests (excluding user ID: {}), from: {}, size: {}", userId, from, size);
 
-        userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        if (from < 0) {
-            throw new ValidationException("Parameter 'from' must not be negative");
-        }
-        if (size <= 0) {
-            throw new ValidationException("Parameter 'size' must be positive");
-        }
-        if (size > 100) {
-            throw new ValidationException("Parameter 'size' must not exceed 100");
-        }
+        validateUserExists(userId);
+        validatePaginationParameters(from, size);
 
         int pageNumber = from / size;
         Pageable pageable = PageRequest.of(pageNumber, size, Sort.by(Sort.Direction.DESC, "created"));
 
-        // Используем нативный запрос для надежности
         Page<ItemRequest> requestsPage = itemRequestRepository.findByRequestorIdNot(userId, pageable);
 
         return requestsPage.getContent().stream()
@@ -104,13 +89,45 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     public ItemRequestDto getItemRequestById(Long requestId, Long userId) {
         log.info("Getting item request by ID: {} for user ID: {}", requestId, userId);
 
-        userRepository.findById(userId)
-                .orElseThrow(() -> new NotFoundException("User not found"));
+        validateUserExists(userId);
 
         ItemRequest itemRequest = itemRequestRepository.findById(requestId)
-                .orElseThrow(() -> new NotFoundException("Item request not found"));
+                .orElseThrow(() -> new NotFoundException("Item request not found with id: " + requestId));
 
         return convertToDtoWithItems(itemRequest);
+    }
+
+    private User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + userId));
+    }
+
+    private void validateUserExists(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new NotFoundException("User not found with id: " + userId);
+        }
+    }
+
+    private void validateItemRequestDto(ItemRequestDto itemRequestDto) {
+        if (itemRequestDto == null) {
+            throw new ValidationException("Item request cannot be null");
+        }
+
+        if (itemRequestDto.getDescription() == null || itemRequestDto.getDescription().trim().isEmpty()) {
+            throw new ValidationException("Item request description cannot be empty");
+        }
+    }
+
+    private void validatePaginationParameters(int from, int size) {
+        if (from < 0) {
+            throw new ValidationException("Parameter 'from' must not be negative");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Parameter 'size' must be positive");
+        }
+        if (size > 100) {
+            throw new ValidationException("Parameter 'size' must not exceed 100");
+        }
     }
 
     private ItemRequestDto convertToDtoWithItems(ItemRequest itemRequest) {
@@ -119,7 +136,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         List<ItemDto> items = itemRepository.findByRequestId(itemRequest.getId()).stream()
                 .map(itemMapper::toDto)
                 .collect(Collectors.toList());
-        dto.setItems(items);
+        dto.setItems(items != null ? items : Collections.emptyList());
 
         return dto;
     }
