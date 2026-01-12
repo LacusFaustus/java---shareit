@@ -25,12 +25,6 @@ public class BookingController {
             @Valid @RequestBody BookingRequestDto bookingRequestDto,
             @RequestHeader("X-Sharer-User-Id") Long userId) {
         log.info("POST /bookings - создание бронирования пользователем {}", userId);
-
-        // Дополнительная валидация: end > start
-        if (!bookingRequestDto.isValid()) {
-            throw new IllegalArgumentException("End date must be after start date");
-        }
-
         return bookingClient.createBooking(bookingRequestDto, userId);
     }
 
