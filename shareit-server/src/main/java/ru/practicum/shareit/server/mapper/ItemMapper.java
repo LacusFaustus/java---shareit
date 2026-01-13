@@ -28,5 +28,6 @@ public interface ItemMapper {
     ItemOwnerDto toOwnerDto(Item item);
 
     List<ItemDto> toDtoList(List<Item> items);
+
     List<ItemOwnerDto> toOwnerDtoList(List<Item> items);
 }
