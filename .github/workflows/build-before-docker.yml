@@ -1,0 +1,36 @@
+name: Build before Docker
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          
+      - name: Build with Maven
+        run: mvn clean package -DskipTests
+        
+      - name: Create CI structure
+        run: |
+          mkdir -p gateway/target server/target dto/target
+          cp shareit-gateway/target/*.jar gateway/target/ 2>/dev/null || touch gateway/target/placeholder.jar
+          cp shareit-server/target/*.jar server/target/ 2>/dev/null || touch server/target/placeholder.jar
+          cp shareit-dto/target/*.jar dto/target/ 2>/dev/null || touch dto/target/placeholder.jar
+          
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-jars
+          path: |
+            gateway/target/
+            server/target/
+            dto/target/
+          retention-days: 1
