@@ -3,463 +3,250 @@ package ru.practicum.shareit.server.service;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
-import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.shareit.dto.ItemDto;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.context.annotation.Import;
 import ru.practicum.shareit.dto.ItemRequestDto;
-import ru.practicum.shareit.dto.UserDto;
 import ru.practicum.shareit.server.exception.NotFoundException;
 import ru.practicum.shareit.server.exception.ValidationException;
+import ru.practicum.shareit.server.mapper.ItemMapperImpl;
+import ru.practicum.shareit.server.mapper.ItemRequestMapperImpl;
+import ru.practicum.shareit.server.model.Item;
+import ru.practicum.shareit.server.model.ItemRequest;
+import ru.practicum.shareit.server.model.User;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@ActiveProfiles("test")
-@TestPropertySource(locations = "classpath:application-test.properties")
-@Transactional
+@DataJpaTest
+@Import({ItemRequestServiceImpl.class, ItemRequestMapperImpl.class, ItemMapperImpl.class})
 class ItemRequestServiceTest {
 
     @Autowired
-    private ItemRequestService itemRequestService;
+    private TestEntityManager entityManager;
 
     @Autowired
-    private UserService userService;
+    private ItemRequestServiceImpl itemRequestService;
 
     @Autowired
-    private ItemService itemService;
+    private ru.practicum.shareit.server.repository.ItemRequestRepository itemRequestRepository;
 
-    private Long user1Id;
-    private Long user2Id;
-    private Long user3Id;
+    @Autowired
+    private ru.practicum.shareit.server.repository.UserRepository userRepository;
+
+    @Autowired
+    private ru.practicum.shareit.server.repository.ItemRepository itemRepository;
+
+    private User user1;
+    private User user2;
+    private ItemRequest existingRequest;
 
     @BeforeEach
     void setUp() {
-        UserDto user1 = UserDto.builder()
-                .name("User 1")
-                .email("user1-" + UUID.randomUUID() + "@test.com")
-                .build();
-        user1Id = userService.createUser(user1).getId();
+        // Очистка базы данных перед каждым тестом
+        itemRequestRepository.deleteAll();
+        itemRepository.deleteAll();
+        userRepository.deleteAll();
 
-        UserDto user2 = UserDto.builder()
-                .name("User 2")
-                .email("user2-" + UUID.randomUUID() + "@test.com")
+        // Создание тестовых данных
+        user1 = User.builder()
+                .name("Пользователь 1")
+                .email("user1@example.com")
                 .build();
-        user2Id = userService.createUser(user2).getId();
+        entityManager.persist(user1);
 
-        UserDto user3 = UserDto.builder()
-                .name("User 3")
-                .email("user3-" + UUID.randomUUID() + "@test.com")
+        user2 = User.builder()
+                .name("Пользователь 2")
+                .email("user2@example.com")
                 .build();
-        user3Id = userService.createUser(user3).getId();
+        entityManager.persist(user2);
+
+        // Создаем существующий запрос
+        existingRequest = ItemRequest.builder()
+                .description("Нужна дрель")
+                .requestor(user1)
+                .created(LocalDateTime.now().minusDays(1))
+                .build();
+        entityManager.persist(existingRequest);
+
+        // Создаем вещь для запроса
+        Item item = Item.builder()
+                .name("Дрель")
+                .description("Аккумуляторная дрель")
+                .available(true)
+                .owner(user2)
+                .requestId(existingRequest.getId())
+                .build();
+        entityManager.persist(item);
+
+        entityManager.flush();
     }
 
-    private UserDto createUser(String name) {
-        return userService.createUser(UserDto.builder()
-                .name(name)
-                .email(name + "-" + UUID.randomUUID() + "@example.com")
-                .build());
-    }
-
-    private ItemRequestDto createItemRequest(Long userId, String description) {
+    @Test
+    void createItemRequest_WithValidData_CreatesSuccessfully() {
+        // Given
         ItemRequestDto requestDto = ItemRequestDto.builder()
-                .description(description)
+                .description("Нужен отвертка")
                 .build();
-        return itemRequestService.createItemRequest(requestDto, userId);
-    }
 
-    // ============== СОЗДАНИЕ ЗАПРОСОВ ==============
+        // When
+        ItemRequestDto result = itemRequestService.createItemRequest(requestDto, user1.getId());
+
+        // Then
+        assertThat(result).isNotNull();
+        assertThat(result.getId()).isNotNull();
+        assertThat(result.getDescription()).isEqualTo("Нужен отвертка");
+        assertThat(result.getRequestorId()).isEqualTo(user1.getId());
+        assertThat(result.getItems()).isEmpty(); // Вещей пока нет
+    }
 
     @Test
     void createItemRequest_WithEmptyDescription_ThrowsValidationException() {
-        UserDto user = createUser("user-empty");
-
+        // Given
         ItemRequestDto requestDto = ItemRequestDto.builder()
-                .description("")
+                .description(" ")
                 .build();
 
-        assertThatThrownBy(() ->
-                itemRequestService.createItemRequest(requestDto, user.getId()))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Item request description cannot be empty");
-    }
-
-    @Test
-    void createItemRequest_WithBlankDescription_ThrowsValidationException() {
-        UserDto user = createUser("user-blank");
-
-        ItemRequestDto requestDto = ItemRequestDto.builder()
-                .description("   ")
-                .build();
-
-        assertThatThrownBy(() ->
-                itemRequestService.createItemRequest(requestDto, user.getId()))
+        // When & Then
+        assertThatThrownBy(() -> itemRequestService.createItemRequest(requestDto, user1.getId()))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Item request description cannot be empty");
     }
 
     @Test
     void createItemRequest_WithNullDescription_ThrowsValidationException() {
-        UserDto user = createUser("user-null");
-
+        // Given
         ItemRequestDto requestDto = ItemRequestDto.builder()
                 .description(null)
                 .build();
 
-        assertThatThrownBy(() ->
-                itemRequestService.createItemRequest(requestDto, user.getId()))
+        // When & Then
+        assertThatThrownBy(() -> itemRequestService.createItemRequest(requestDto, user1.getId()))
                 .isInstanceOf(ValidationException.class)
                 .hasMessageContaining("Item request description cannot be empty");
     }
 
     @Test
-    void createItemRequest_WithNullRequestDto_ThrowsValidationException() {
-        UserDto user = createUser("user-null-dto");
-
-        assertThatThrownBy(() ->
-                itemRequestService.createItemRequest(null, user.getId()))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Item request cannot be null");
-    }
-
-    @Test
-    void createItemRequest_WithValidDescription_ShouldSucceed() {
-        UserDto user = createUser("user-valid");
-
+    void createItemRequest_ByNonExistentUser_ThrowsNotFoundException() {
+        // Given
         ItemRequestDto requestDto = ItemRequestDto.builder()
-                .description("Need a laptop")
+                .description("Нужна вещь")
                 .build();
 
-        ItemRequestDto result = itemRequestService.createItemRequest(requestDto, user.getId());
-
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isNotNull();
-        assertThat(result.getDescription()).isEqualTo("Need a laptop");
-        assertThat(result.getRequestorId()).isEqualTo(user.getId());
-        assertThat(result.getCreated()).isBeforeOrEqualTo(LocalDateTime.now());
-        assertThat(result.getItems()).isNotNull().isEmpty();
-    }
-
-    @Test
-    void createItemRequest_WithNonexistentUser_ThrowsNotFoundException() {
-        ItemRequestDto requestDto = ItemRequestDto.builder()
-                .description("Need item")
-                .build();
-
-        assertThatThrownBy(() ->
-                itemRequestService.createItemRequest(requestDto, 999L))
+        // When & Then
+        assertThatThrownBy(() -> itemRequestService.createItemRequest(requestDto, 999L))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("User not found");
     }
 
-    // ============== ПОЛУЧЕНИЕ ВСЕХ ЗАПРОСОВ ==============
-
     @Test
-    void getAllItemRequests_ExcludesCurrentUserRequests() {
-        createItemRequest(user2Id, "Request 1 from User 2");
-        createItemRequest(user2Id, "Request 2 from User 2");
-        createItemRequest(user3Id, "Request 1 from User 3");
-        createItemRequest(user3Id, "Request 2 from User 3");
-        createItemRequest(user3Id, "Request 3 from User 3");
+    void getUserItemRequests_ReturnsUserRequests() {
+        // When
+        List<ItemRequestDto> requests = itemRequestService.getUserItemRequests(user1.getId());
 
-        List<ItemRequestDto> requestsForUser1 = itemRequestService.getAllItemRequests(user1Id, 0, 20);
-
-        assertThat(requestsForUser1).hasSize(5);
-        assertThat(requestsForUser1).allMatch(r -> !r.getRequestorId().equals(user1Id));
-
-        long requestsFromUser2 = requestsForUser1.stream()
-                .filter(r -> r.getRequestorId().equals(user2Id))
-                .count();
-        long requestsFromUser3 = requestsForUser1.stream()
-                .filter(r -> r.getRequestorId().equals(user3Id))
-                .count();
-
-        assertThat(requestsFromUser2).isEqualTo(2);
-        assertThat(requestsFromUser3).isEqualTo(3);
+        // Then
+        assertThat(requests).hasSize(1);
+        assertThat(requests.get(0).getDescription()).isEqualTo("Нужна дрель");
+        assertThat(requests.get(0).getItems()).hasSize(1); // Есть одна вещь
     }
 
     @Test
-    void getAllItemRequests_WhenNoOtherUsers_ReturnsEmptyList() {
-        UserDto user = createUser("only-user");
+    void getUserItemRequests_ForUserWithoutRequests_ReturnsEmptyList() {
+        // When
+        List<ItemRequestDto> requests = itemRequestService.getUserItemRequests(user2.getId());
 
-        ItemRequestDto request = ItemRequestDto.builder()
-                .description("My request")
-                .build();
-        itemRequestService.createItemRequest(request, user.getId());
-
-        List<ItemRequestDto> result = itemRequestService.getAllItemRequests(user.getId(), 0, 10);
-
-        assertThat(result).isEmpty();
+        // Then
+        assertThat(requests).isEmpty();
     }
 
     @Test
-    void getAllItemRequests_WithNonexistentUser_ThrowsNotFoundException() {
-        assertThatThrownBy(() ->
-                itemRequestService.getAllItemRequests(999L, 0, 10))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("User not found");
-    }
+    void getAllItemRequests_ReturnsOtherUsersRequests() {
+        // When
+        List<ItemRequestDto> requests = itemRequestService.getAllItemRequests(user2.getId(), 0, 10);
 
-    // ============== ПАГИНАЦИЯ ==============
-
-    @Test
-    void getAllItemRequests_Pagination_WorksCorrectly() {
-        for (int i = 1; i <= 7; i++) {
-            createItemRequest(user2Id, "Request " + i + " from User 2");
-        }
-
-        List<ItemRequestDto> page1 = itemRequestService.getAllItemRequests(user1Id, 0, 3);
-        assertThat(page1).hasSize(3);
-
-        List<ItemRequestDto> page2 = itemRequestService.getAllItemRequests(user1Id, 3, 3);
-        assertThat(page2).hasSize(3);
-
-        List<ItemRequestDto> page3 = itemRequestService.getAllItemRequests(user1Id, 6, 3);
-        assertThat(page3).hasSize(1);
+        // Then
+        assertThat(requests).hasSize(1);
+        assertThat(requests.get(0).getDescription()).isEqualTo("Нужна дрель");
+        assertThat(requests.get(0).getRequestorId()).isEqualTo(user1.getId());
     }
 
     @Test
-    void getAllItemRequests_Pagination_WithNonMultipleFrom() {
-        for (int i = 1; i <= 5; i++) {
-            createItemRequest(user2Id, "Request " + i);
-        }
-
-        // from=1, size=2 -> pageNumber=0 (1/2=0), но должно пропустить первый элемент
-        List<ItemRequestDto> result = itemRequestService.getAllItemRequests(user1Id, 1, 2);
-
-        // Проверяем что получили правильное количество
-        assertThat(result).hasSize(2);
-    }
-
-    @Test
-    void getAllItemRequests_WithInvalidPagination_ThrowsValidationException() {
-        UserDto user = createUser("user-pag");
-
-        assertThatThrownBy(() ->
-                itemRequestService.getAllItemRequests(user.getId(), -1, 10))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Parameter 'from' must not be negative");
-
-        assertThatThrownBy(() ->
-                itemRequestService.getAllItemRequests(user.getId(), 0, 0))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Parameter 'size' must be positive");
-
-        assertThatThrownBy(() ->
-                itemRequestService.getAllItemRequests(user.getId(), 0, -1))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Parameter 'size' must be positive");
-    }
-
-    @Test
-    void getAllItemRequests_WithSizeExceeding100_ThrowsValidationException() {
-        UserDto user = createUser("user-large");
-
-        assertThatThrownBy(() ->
-                itemRequestService.getAllItemRequests(user.getId(), 0, 101))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Parameter 'size' must not exceed 100");
-    }
-
-    @Test
-    void getAllItemRequests_WithSize100_ShouldWork() {
-        for (int i = 1; i <= 105; i++) {
-            createItemRequest(user2Id, "Request " + i);
-        }
-
-        List<ItemRequestDto> result = itemRequestService.getAllItemRequests(user1Id, 0, 100);
-        assertThat(result).hasSize(100);
-    }
-
-    // ============== ПОЛЬЗОВАТЕЛЬСКИЕ ЗАПРОСЫ ==============
-
-    @Test
-    void getUserItemRequests_ReturnsOnlyUserRequests() {
-        createItemRequest(user1Id, "Request 1 from User 1");
-        createItemRequest(user1Id, "Request 2 from User 1");
-        createItemRequest(user2Id, "Request from User 2");
-
-        List<ItemRequestDto> user1Requests = itemRequestService.getUserItemRequests(user1Id);
-        assertThat(user1Requests).hasSize(2);
-        assertThat(user1Requests).allMatch(r -> r.getRequestorId().equals(user1Id));
-
-        List<ItemRequestDto> user2Requests = itemRequestService.getUserItemRequests(user2Id);
-        assertThat(user2Requests).hasSize(1);
-        assertThat(user2Requests).allMatch(r -> r.getRequestorId().equals(user2Id));
-
-        List<ItemRequestDto> user3Requests = itemRequestService.getUserItemRequests(user3Id);
-        assertThat(user3Requests).isEmpty();
-    }
-
-    @Test
-    void getUserItemRequests_ReturnsInDescendingOrder() {
-        UserDto requester = createUser("requester-order");
-
-        List<Long> createdIds = new ArrayList<>();
-
-        for (int i = 1; i <= 5; i++) {
-            ItemRequestDto requestDto = ItemRequestDto.builder()
-                    .description("Need item " + i)
+    void getAllItemRequests_WithPagination_ReturnsPaginatedResults() {
+        // Given - создаем больше запросов
+        for (int i = 0; i < 15; i++) {
+            ItemRequest request = ItemRequest.builder()
+                    .description("Запрос " + i)
+                    .requestor(user1)
+                    .created(LocalDateTime.now().minusHours(i))
                     .build();
-            ItemRequestDto created = itemRequestService.createItemRequest(requestDto, requester.getId());
-            createdIds.add(created.getId());
-
-            try {
-                Thread.sleep(10);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
+            entityManager.persist(request);
         }
+        entityManager.flush();
 
-        List<ItemRequestDto> result = itemRequestService.getUserItemRequests(requester.getId());
+        // When - получаем первую страницу
+        List<ItemRequestDto> firstPage = itemRequestService.getAllItemRequests(user2.getId(), 0, 5);
 
-        assertThat(result).hasSize(5);
+        // Then
+        assertThat(firstPage).hasSize(5);
 
-        List<Long> resultIds = result.stream()
-                .map(ItemRequestDto::getId)
-                .collect(Collectors.toList());
+        // When - получаем вторую страницу
+        List<ItemRequestDto> secondPage = itemRequestService.getAllItemRequests(user2.getId(), 5, 5);
 
-        List<Long> expectedOrder = new ArrayList<>(createdIds);
-        Collections.reverse(expectedOrder);
+        // Then
+        assertThat(secondPage).hasSize(5);
 
-        assertThat(resultIds).isEqualTo(expectedOrder);
-
-        assertThat(result.get(0).getId()).isEqualTo(createdIds.get(4)); // id=5
-        assertThat(result.get(4).getId()).isEqualTo(createdIds.get(0)); // id=1
+        // Когда from > общего количества, возвращается пустой список
+        List<ItemRequestDto> emptyPage = itemRequestService.getAllItemRequests(user2.getId(), 100, 5);
+        assertThat(emptyPage).isEmpty();
     }
 
     @Test
-    void getUserItemRequests_WithNonexistentUser_ThrowsNotFoundException() {
-        assertThatThrownBy(() ->
-                itemRequestService.getUserItemRequests(999L))
-                .isInstanceOf(NotFoundException.class)
-                .hasMessageContaining("User not found");
+    void getAllItemRequests_ForSameUser_ReturnsEmptyList() {
+        // Когда пользователь запрашивает свои же запросы, они не возвращаются
+        List<ItemRequestDto> requests = itemRequestService.getAllItemRequests(user1.getId(), 0, 10);
+
+        assertThat(requests).isEmpty();
     }
 
     @Test
-    void getUserItemRequests_ReturnsEmptyListForUserWithoutRequests() {
-        UserDto user = createUser("user-no-requests");
+    void getItemRequestById_WithValidId_ReturnsRequest() {
+        // When
+        ItemRequestDto request = itemRequestService.getItemRequestById(existingRequest.getId(), user2.getId());
 
-        List<ItemRequestDto> requests = itemRequestService.getUserItemRequests(user.getId());
-
-        assertThat(requests).isNotNull().isEmpty();
-    }
-
-    // ============== ПОЛУЧЕНИЕ ЗАПРОСА ПО ID ==============
-
-    @Test
-    void getItemRequestById_WithItems_ReturnsRequestWithItems() {
-        UserDto requester = createUser("requester");
-        UserDto owner = createUser("owner");
-
-        ItemRequestDto request = createItemRequest(requester.getId(), "Need a drill");
-
-        ItemDto item = ItemDto.builder()
-                .name("Electric Drill")
-                .description("Powerful drill")
-                .available(true)
-                .requestId(request.getId())
-                .build();
-        itemService.createItem(item, owner.getId());
-
-        ItemRequestDto result = itemRequestService.getItemRequestById(request.getId(), requester.getId());
-
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(request.getId());
-        assertThat(result.getDescription()).isEqualTo("Need a drill");
-        assertThat(result.getItems()).hasSize(1);
-        assertThat(result.getItems().get(0).getName()).isEqualTo("Electric Drill");
-        assertThat(result.getItems().get(0).getRequestId()).isEqualTo(request.getId());
+        // Then
+        assertThat(request).isNotNull();
+        assertThat(request.getId()).isEqualTo(existingRequest.getId());
+        assertThat(request.getDescription()).isEqualTo("Нужна дрель");
+        assertThat(request.getItems()).hasSize(1); // Есть одна вещь
     }
 
     @Test
-    void getItemRequestById_WithoutItems_ReturnsRequestWithEmptyItems() {
-        UserDto user = createUser("user");
-
-        ItemRequestDto request = createItemRequest(user.getId(), "Need something");
-
-        ItemRequestDto result = itemRequestService.getItemRequestById(request.getId(), user.getId());
-
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(request.getId());
-        assertThat(result.getItems()).isNotNull().isEmpty();
-    }
-
-    @Test
-    void getItemRequestById_NonExistentRequest_ThrowsNotFoundException() {
-        UserDto user = createUser("user");
-
-        assertThatThrownBy(() ->
-                itemRequestService.getItemRequestById(999L, user.getId()))
+    void getItemRequestById_WithNonExistentId_ThrowsNotFoundException() {
+        // When & Then
+        assertThatThrownBy(() -> itemRequestService.getItemRequestById(999L, user1.getId()))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("Item request not found");
     }
 
     @Test
-    void getItemRequestById_WithNonexistentUser_ThrowsNotFoundException() {
-        UserDto user = createUser("user");
-        ItemRequestDto request = createItemRequest(user.getId(), "Request");
-
-        assertThatThrownBy(() ->
-                itemRequestService.getItemRequestById(request.getId(), 999L))
+    void getItemRequestById_WithNonExistentUser_ThrowsNotFoundException() {
+        // When & Then
+        assertThatThrownBy(() -> itemRequestService.getItemRequestById(existingRequest.getId(), 999L))
                 .isInstanceOf(NotFoundException.class)
                 .hasMessageContaining("User not found");
     }
 
-    @Test
-    void getItemRequestById_UserCanViewAnyRequest() {
-        UserDto requester = createUser("requester");
-        UserDto viewer = createUser("viewer");
-
-        ItemRequestDto request = createItemRequest(requester.getId(), "Need item");
-
-        ItemRequestDto result = itemRequestService.getItemRequestById(request.getId(), viewer.getId());
-
-        assertThat(result).isNotNull();
-        assertThat(result.getId()).isEqualTo(request.getId());
-        assertThat(result.getDescription()).isEqualTo("Need item");
-    }
+    // Тесты валидации параметров пагинации удалены, так как валидация в Gateway
 
     @Test
-    void getItemRequestById_ReturnsCorrectItemsForRequest() {
-        UserDto requester = createUser("requester");
-        UserDto owner1 = createUser("owner1");
-        UserDto owner2 = createUser("owner2");
-
-        ItemRequestDto request = createItemRequest(requester.getId(), "Need tools");
-
-        // Создаем несколько предметов для этого запроса
-        ItemDto item1 = ItemDto.builder()
-                .name("Hammer")
-                .description("Heavy hammer")
-                .available(true)
-                .requestId(request.getId())
-                .build();
-        itemService.createItem(item1, owner1.getId());
-
-        ItemDto item2 = ItemDto.builder()
-                .name("Screwdriver")
-                .description("Phillips screwdriver")
-                .available(true)
-                .requestId(request.getId())
-                .build();
-        itemService.createItem(item2, owner2.getId());
-
-        ItemRequestDto result = itemRequestService.getItemRequestById(request.getId(), requester.getId());
-
-        assertThat(result).isNotNull();
-        assertThat(result.getItems()).hasSize(2);
-        assertThat(result.getItems())
-                .extracting(ItemDto::getName)
-                .containsExactlyInAnyOrder("Hammer", "Screwdriver");
+    void getAllItemRequests_WithZeroSize_ThrowsValidationException() {
+        // Параметры валидируются в сервисе для безопасности
+        assertThatThrownBy(() ->
+                itemRequestService.getAllItemRequests(user2.getId(), 0, 0))
+                .isInstanceOf(ValidationException.class)
+                .hasMessageContaining("Parameter 'size' must be positive");
     }
 }

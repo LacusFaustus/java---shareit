@@ -43,7 +43,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
     public ItemRequestDto createItemRequest(ItemRequestDto itemRequestDto, Long userId) {
         log.info("Creating item request by user ID: {}", userId);
 
-        // Проверка на null DTO
+        // Базовая проверка логики
         if (itemRequestDto == null) {
             throw new ValidationException("Item request cannot be null");
         }
@@ -75,7 +75,6 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        // Убедимся что сортировка работает правильно
         List<ItemRequest> requests = itemRequestRepository.findByRequestorIdOrderByCreatedDesc(userId);
 
         if (requests.isEmpty()) {
@@ -86,6 +85,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
                 .map(ItemRequest::getId)
                 .collect(Collectors.toList());
 
+        // Batch запрос для всех items
         Map<Long, List<Item>> itemsByRequestId = itemRepository.findByRequestIdIn(requestIds).stream()
                 .collect(Collectors.groupingBy(Item::getRequestId));
 
@@ -109,15 +109,9 @@ public class ItemRequestServiceImpl implements ItemRequestService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        // Параметры уже валидированы в Gateway, но проверяем базовую логику
-        if (from < 0) {
-            throw new ValidationException("Parameter 'from' must not be negative");
-        }
+        // Gateway уже проверил, но для безопасности от деления на ноль
         if (size <= 0) {
             throw new ValidationException("Parameter 'size' must be positive");
-        }
-        if (size > 100) {
-            throw new ValidationException("Parameter 'size' must not exceed 100");
         }
 
         int pageNumber = from / size;
@@ -135,6 +129,7 @@ public class ItemRequestServiceImpl implements ItemRequestService {
                 .map(ItemRequest::getId)
                 .collect(Collectors.toList());
 
+        // Batch запрос для всех items
         Map<Long, List<Item>> itemsByRequestId = itemRepository.findByRequestIdIn(requestIds).stream()
                 .collect(Collectors.groupingBy(Item::getRequestId));
 

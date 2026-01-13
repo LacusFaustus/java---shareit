@@ -51,7 +51,7 @@ public class BookingServiceImpl implements BookingService {
             throw new NotFoundException("Owner cannot book their own item");
         }
 
-        // Базовая проверка дат
+        // Базовая проверка дат (проверка логики, не валидация)
         if (bookingRequestDto.getStart() == null || bookingRequestDto.getEnd() == null) {
             throw new ValidationException("Start and end dates are required");
         }
@@ -115,11 +115,9 @@ public class BookingServiceImpl implements BookingService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        // Исправленные сообщения об ошибках
-        if (from < 0) {
-            throw new ValidationException("Parameter 'from' must not be negative");
-        }
+        // Параметры уже валидированы в Gateway, но проверяем size > 0 для безопасности
         if (size <= 0) {
+            // Gateway уже должен был проверить это, но на всякий случай
             throw new ValidationException("Parameter 'size' must be positive");
         }
 
@@ -178,12 +176,10 @@ public class BookingServiceImpl implements BookingService {
         userRepository.findById(ownerId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        // Параметры уже валидированы в Gateway
-        if (from < 0) {
-            throw new ValidationException("From parameter must not be negative");
-        }
+        // Параметры уже валидированы в Gateway, но проверяем size > 0 для безопасности
         if (size <= 0) {
-            throw new ValidationException("Size parameter must be positive");
+            // Gateway уже должен был проверить это, но на всякий случай
+            throw new ValidationException("Parameter 'size' must be positive");
         }
 
         Pageable pageable = PageRequest.of(from / size, size, Sort.by(Sort.Direction.DESC, "start"));

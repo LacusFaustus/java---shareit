@@ -6,6 +6,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import ru.practicum.shareit.dto.BookingRequestDto;
 import ru.practicum.shareit.dto.BookingResponseDto;
 import ru.practicum.shareit.server.exception.NotFoundException;
@@ -88,11 +90,11 @@ class BookingServiceTest {
     @Test
     void createBooking_WithValidData_CreatesSuccessfully() {
         // Given
-        BookingRequestDto bookingRequest = new BookingRequestDto(
-                availableItem.getId(),
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusDays(1)
-        );
+        BookingRequestDto bookingRequest = BookingRequestDto.builder()
+                .itemId(availableItem.getId())
+                .start(LocalDateTime.now().plusHours(1))
+                .end(LocalDateTime.now().plusDays(1))
+                .build();
 
         // When
         BookingResponseDto result = bookingService.createBooking(bookingRequest, booker.getId());
@@ -108,11 +110,11 @@ class BookingServiceTest {
     @Test
     void createBooking_WithUnavailableItem_ThrowsValidationException() {
         // Given
-        BookingRequestDto bookingRequest = new BookingRequestDto(
-                unavailableItem.getId(),
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusDays(1)
-        );
+        BookingRequestDto bookingRequest = BookingRequestDto.builder()
+                .itemId(unavailableItem.getId())
+                .start(LocalDateTime.now().plusHours(1))
+                .end(LocalDateTime.now().plusDays(1))
+                .build();
 
         // When & Then
         assertThatThrownBy(() -> bookingService.createBooking(bookingRequest, booker.getId()))
@@ -123,11 +125,11 @@ class BookingServiceTest {
     @Test
     void createBooking_ByOwner_ThrowsNotFoundException() {
         // Given
-        BookingRequestDto bookingRequest = new BookingRequestDto(
-                availableItem.getId(),
-                LocalDateTime.now().plusHours(1),
-                LocalDateTime.now().plusDays(1)
-        );
+        BookingRequestDto bookingRequest = BookingRequestDto.builder()
+                .itemId(availableItem.getId())
+                .start(LocalDateTime.now().plusHours(1))
+                .end(LocalDateTime.now().plusDays(1))
+                .build();
 
         // When & Then
         assertThatThrownBy(() -> bookingService.createBooking(bookingRequest, owner.getId()))
@@ -138,11 +140,11 @@ class BookingServiceTest {
     @Test
     void createBooking_WithEndBeforeStart_ThrowsValidationException() {
         // Given
-        BookingRequestDto bookingRequest = new BookingRequestDto(
-                availableItem.getId(),
-                LocalDateTime.now().plusDays(2),
-                LocalDateTime.now().plusDays(1)
-        );
+        BookingRequestDto bookingRequest = BookingRequestDto.builder()
+                .itemId(availableItem.getId())
+                .start(LocalDateTime.now().plusDays(2))
+                .end(LocalDateTime.now().plusDays(1))
+                .build();
 
         // When & Then
         assertThatThrownBy(() -> bookingService.createBooking(bookingRequest, booker.getId()))
@@ -341,17 +343,19 @@ class BookingServiceTest {
     }
 
     @Test
-    void getUserBookings_WithNegativeFrom_ThrowsValidationException() {
-        // When & Then
-        assertThatThrownBy(() ->
-                bookingService.getUserBookings(booker.getId(), "ALL", -1, 10))
-                .isInstanceOf(ValidationException.class)
-                .hasMessageContaining("Parameter 'from' must not be negative");
-    }
-
-    @Test
     void getUserBookings_WithZeroSize_ThrowsValidationException() {
-        // When & Then
+        // Given
+        Booking booking = Booking.builder()
+                .start(LocalDateTime.now().plusHours(1))
+                .end(LocalDateTime.now().plusDays(1))
+                .item(availableItem)
+                .booker(booker)
+                .status(BookingStatus.WAITING)
+                .build();
+        entityManager.persist(booking);
+        entityManager.flush();
+
+        // When & Then - Теперь сервис бросает ValidationException для size = 0
         assertThatThrownBy(() ->
                 bookingService.getUserBookings(booker.getId(), "ALL", 0, 0))
                 .isInstanceOf(ValidationException.class)

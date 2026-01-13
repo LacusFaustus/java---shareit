@@ -18,7 +18,6 @@ import ru.practicum.shareit.server.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -39,7 +38,7 @@ public class ItemServiceImpl implements ItemService {
     public ItemResponseDto createItem(ItemDto itemDto, Long ownerId) {
         log.info("Creating item for owner ID: {}", ownerId);
 
-        // Базовые проверки (основная валидация в Gateway)
+        // Базовые проверки логики
         if (itemDto.getName() == null || itemDto.getName().isBlank()) {
             throw new ValidationException("Item name cannot be empty");
         }
@@ -148,10 +147,10 @@ public class ItemServiceImpl implements ItemService {
                 .map(Item::getId)
                 .collect(Collectors.toList());
 
-        // Добавляем бронирования
+        // Добавляем бронирования (batch запросы)
         addLastAndNextBookingsForOwner(itemDtos, itemIds, now, ownerId);
 
-        // Добавляем комментарии
+        // Добавляем комментарии (batch запросы)
         addCommentsForOwner(itemDtos, itemIds);
 
         return itemDtos;
@@ -176,7 +175,7 @@ public class ItemServiceImpl implements ItemService {
     public CommentDto addComment(Long itemId, CommentDto commentDto, Long userId) {
         log.info("Adding comment to item ID: {} by user ID: {}", itemId, userId);
 
-        // Базовые проверки (основная валидация в Gateway)
+        // Базовая проверка логики
         if (commentDto.getText() == null || commentDto.getText().isBlank()) {
             throw new ValidationException("Comment text cannot be empty");
         }
@@ -214,7 +213,7 @@ public class ItemServiceImpl implements ItemService {
             return;
         }
 
-        // Получаем последние бронирования для всех items
+        // Batch запрос для последних бронирований
         Map<Long, Booking> lastBookings = bookingRepository
                 .findAllByItemIdInAndStatusAndStartBeforeOrderByStartDesc(itemIds, BookingStatus.APPROVED, now)
                 .stream()
@@ -226,7 +225,7 @@ public class ItemServiceImpl implements ItemService {
                         )
                 ));
 
-        // Получаем следующие бронирования для всех items
+        // Batch запрос для следующих бронирований
         Map<Long, Booking> nextBookings = bookingRepository
                 .findAllByItemIdInAndStatusAndStartAfterOrderByStartAsc(itemIds, BookingStatus.APPROVED, now)
                 .stream()
@@ -257,7 +256,7 @@ public class ItemServiceImpl implements ItemService {
             return;
         }
 
-        // Для владельца нужно только его items
+        // Batch запрос для владельца
         Map<Long, Booking> lastBookings = bookingRepository
                 .findAllByItemIdInAndStatusAndStartBeforeOrderByStartDesc(itemIds, BookingStatus.APPROVED, now)
                 .stream()
@@ -301,6 +300,7 @@ public class ItemServiceImpl implements ItemService {
             return;
         }
 
+        // Batch запрос для комментариев
         Map<Long, List<Comment>> commentsByItemId = commentRepository.findAllByItemIdInOrderByCreatedDesc(itemIds)
                 .stream()
                 .collect(Collectors.groupingBy(comment -> comment.getItem().getId()));
@@ -323,6 +323,7 @@ public class ItemServiceImpl implements ItemService {
             return;
         }
 
+        // Batch запрос для комментариев
         Map<Long, List<Comment>> commentsByItemId = commentRepository.findAllByItemIdInOrderByCreatedDesc(itemIds)
                 .stream()
                 .collect(Collectors.groupingBy(comment -> comment.getItem().getId()));
