@@ -17,4 +17,8 @@ public interface ItemRepository extends JpaRepository<Item, Long> {
     List<Item> searchAvailableItems(@Param("text") String text);
 
     List<Item> findByRequestId(Long requestId);
+
+    // Новый метод для batch запросов
+    @Query("SELECT i FROM Item i WHERE i.requestId IN :requestIds")
+    List<Item> findByRequestIdIn(@Param("requestIds") List<Long> requestIds);
 }

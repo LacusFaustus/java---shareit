@@ -18,7 +18,7 @@ public class ItemRequestServerController {
 
     @PostMapping
     public ResponseEntity<ItemRequestDto> createItemRequest(
-            @RequestBody ItemRequestDto itemRequestDto,  // Убрана валидация
+            @RequestBody ItemRequestDto itemRequestDto,
             @RequestHeader("X-Sharer-User-Id") Long userId) {
         log.info("SERVER: POST /requests - создание запроса вещи пользователем {}", userId);
         return ResponseEntity.ok(itemRequestService.createItemRequest(itemRequestDto, userId));

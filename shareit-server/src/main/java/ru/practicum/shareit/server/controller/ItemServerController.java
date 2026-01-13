@@ -18,7 +18,7 @@ public class ItemServerController {
 
     @PostMapping
     public ResponseEntity<ItemResponseDto> createItem(
-            @RequestBody ItemDto itemDto,
+            @RequestBody ItemDto itemDto, // Убрано @Valid
             @RequestHeader("X-Sharer-User-Id") Long ownerId) {
         log.info("SERVER: POST /items - создание вещи пользователем {}", ownerId);
         return ResponseEntity.ok(itemService.createItem(itemDto, ownerId));
@@ -50,7 +50,7 @@ public class ItemServerController {
 
     @GetMapping("/search")
     public ResponseEntity<List<ItemDto>> searchItems(
-            @RequestParam String text,
+            @RequestParam String text, // Убрано @NotBlank
             @RequestHeader("X-Sharer-User-Id") Long userId) {
         log.info("SERVER: GET /items/search?text={} - поиск вещей", text);
         return ResponseEntity.ok(itemService.searchItems(text, userId));

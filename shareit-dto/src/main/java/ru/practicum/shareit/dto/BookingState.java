@@ -1,6 +1,5 @@
-package ru.practicum.shareit.server.model;
+package ru.practicum.shareit.dto;
 
-import java.util.Arrays;
 import java.util.Optional;
 
 public enum BookingState {

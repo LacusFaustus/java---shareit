@@ -2,10 +2,9 @@ name: Java CI with Maven
 
 on:
   push:
-    branches: [ "main", "master", "add-item-requests-and-gateway" ]
+    branches: [ "main", "master" ]
   pull_request:
-    branches: [ "main", "master", "add-item-requests-and-gateway" ]
-  workflow_dispatch:  # Позволяет запускать вручную
+    branches: [ "main", "master" ]
 
 jobs:
   test:
@@ -66,3 +65,4 @@ jobs:
 
       - name: Build with Maven
         run: mvn -B package --file pom.xml
+

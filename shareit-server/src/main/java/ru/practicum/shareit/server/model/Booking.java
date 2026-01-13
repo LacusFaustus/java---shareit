@@ -5,14 +5,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.w3c.dom.DOMImplementationList;
 
 import java.time.LocalDateTime;
 
 @Data
-@Builder
 @Entity
 @Table(name = "bookings")
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Booking {

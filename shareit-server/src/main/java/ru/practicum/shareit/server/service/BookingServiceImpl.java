@@ -19,6 +19,7 @@ import ru.practicum.shareit.server.repository.UserRepository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -50,7 +51,14 @@ public class BookingServiceImpl implements BookingService {
             throw new NotFoundException("Owner cannot book their own item");
         }
 
-        validateBookingDates(bookingRequestDto);
+        // Базовая проверка дат
+        if (bookingRequestDto.getStart() == null || bookingRequestDto.getEnd() == null) {
+            throw new ValidationException("Start and end dates are required");
+        }
+
+        if (!bookingRequestDto.getEnd().isAfter(bookingRequestDto.getStart())) {
+            throw new ValidationException("End date must be after start date");
+        }
 
         Booking booking = bookingMapper.toEntity(bookingRequestDto);
         booking.setItem(item);
@@ -107,12 +115,21 @@ public class BookingServiceImpl implements BookingService {
         userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        validatePaginationParams(from, size);
+        // Исправленные сообщения об ошибках
+        if (from < 0) {
+            throw new ValidationException("Parameter 'from' must not be negative");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Parameter 'size' must be positive");
+        }
 
         Pageable pageable = PageRequest.of(from / size, size, Sort.by(Sort.Direction.DESC, "start"));
         LocalDateTime now = LocalDateTime.now();
 
-        BookingState bookingState = getBookingState(state);
+        // Используем метод from() из enum BookingState
+        Optional<BookingState> bookingStateOpt = BookingState.from(state);
+        BookingState bookingState = bookingStateOpt.orElseThrow(() ->
+                new ValidationException("Unknown state: " + state));
 
         List<Booking> bookings;
         switch (bookingState) {
@@ -161,12 +178,21 @@ public class BookingServiceImpl implements BookingService {
         userRepository.findById(ownerId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
-        validatePaginationParams(from, size);
+        // Параметры уже валидированы в Gateway
+        if (from < 0) {
+            throw new ValidationException("From parameter must not be negative");
+        }
+        if (size <= 0) {
+            throw new ValidationException("Size parameter must be positive");
+        }
 
         Pageable pageable = PageRequest.of(from / size, size, Sort.by(Sort.Direction.DESC, "start"));
         LocalDateTime now = LocalDateTime.now();
 
-        BookingState bookingState = getBookingState(state);
+        // Используем метод from() из enum BookingState
+        Optional<BookingState> bookingStateOpt = BookingState.from(state);
+        BookingState bookingState = bookingStateOpt.orElseThrow(() ->
+                new ValidationException("Unknown state: " + state));
 
         List<Booking> bookings;
         switch (bookingState) {
@@ -206,46 +232,5 @@ public class BookingServiceImpl implements BookingService {
         return bookings.stream()
                 .map(bookingMapper::toResponseDto)
                 .collect(Collectors.toList());
-    }
-
-    private void validateBookingDates(BookingRequestDto bookingRequestDto) {
-        if (bookingRequestDto.getStart() == null || bookingRequestDto.getEnd() == null) {
-            throw new ValidationException("Start and end dates are required");
-        }
-
-        LocalDateTime now = LocalDateTime.now();
-
-        if (bookingRequestDto.getStart().isBefore(now)) {
-            throw new ValidationException("Start date cannot be in the past");
-        }
-
-        if (bookingRequestDto.getEnd().isBefore(now)) {
-            throw new ValidationException("End date must be in the future");
-        }
-
-        if (!bookingRequestDto.getEnd().isAfter(bookingRequestDto.getStart())) {
-            throw new ValidationException("End date must be after start date");
-        }
-
-        if (bookingRequestDto.getStart().isEqual(bookingRequestDto.getEnd())) {
-            throw new ValidationException("Start and end dates cannot be the same");
-        }
-    }
-
-    private BookingState getBookingState(String state) {
-        try {
-            return BookingState.valueOf(state.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new ValidationException("Unknown state: " + state);
-        }
-    }
-
-    private void validatePaginationParams(int from, int size) {
-        if (from < 0) {
-            throw new ValidationException("Parameter 'from' must be >= 0");
-        }
-        if (size <= 0) {
-            throw new ValidationException("Parameter 'size' must be > 0");
-        }
     }
 }

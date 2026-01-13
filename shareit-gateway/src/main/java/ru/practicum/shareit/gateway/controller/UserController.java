@@ -1,8 +1,9 @@
-package ru.practicum.shareit.gateway.controller;
+ package ru.practicum.shareit.gateway.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.shareit.gateway.client.UserClient;
 import ru.practicum.shareit.dto.UserDto;
@@ -10,6 +11,7 @@ import ru.practicum.shareit.dto.UserDto;
 import jakarta.validation.Valid;
 
 @Slf4j
+@Validated
 @RestController
 @RequestMapping(path = "/users")
 @RequiredArgsConstructor

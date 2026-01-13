@@ -216,15 +216,12 @@ class BookingControllerTests {
     }
 
     @Test
-    void getUserBookings_WithInvalidState_ReturnsOk() {
-        when(bookingClient.getUserBookings(eq(1L), eq("INVALID_STATE"), eq(0), eq(10)))
-                .thenReturn(ResponseEntity.ok("User bookings"));
-
+    void getUserBookings_WithInvalidState_ReturnsBadRequest() {
         try {
             mockMvc.perform(get("/bookings")
                             .header("X-Sharer-User-Id", 1L)
                             .param("state", "INVALID_STATE"))
-                    .andExpect(status().isOk());
+                    .andExpect(status().isBadRequest());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

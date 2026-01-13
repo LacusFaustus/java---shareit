@@ -9,8 +9,6 @@ import ru.practicum.shareit.dto.BookingRequestDto;
 import ru.practicum.shareit.dto.BookingResponseDto;
 import ru.practicum.shareit.server.service.BookingService;
 
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.PositiveOrZero;
 import java.util.List;
 
 @Slf4j
@@ -22,7 +20,7 @@ public class BookingServerController {
 
     @PostMapping
     public ResponseEntity<BookingResponseDto> createBooking(
-            @RequestBody BookingRequestDto bookingRequestDto,
+            @RequestBody BookingRequestDto bookingRequestDto, // Убрано @Valid
             @RequestHeader("X-Sharer-User-Id") Long userId) {
         log.info("SERVER: POST /bookings - создание бронирования пользователем {}", userId);
         BookingResponseDto booking = bookingService.createBooking(bookingRequestDto, userId);
@@ -51,8 +49,8 @@ public class BookingServerController {
     public ResponseEntity<List<BookingResponseDto>> getUserBookings(
             @RequestHeader("X-Sharer-User-Id") Long userId,
             @RequestParam(defaultValue = "ALL") String state,
-            @RequestParam(defaultValue = "0") @PositiveOrZero int from,
-            @RequestParam(defaultValue = "10") @Positive int size) {
+            @RequestParam(defaultValue = "0") int from, // Убрано @PositiveOrZero
+            @RequestParam(defaultValue = "10") int size) { // Убрано @Positive
         log.info("SERVER: GET /bookings?state={}&from={}&size={} - получение бронирований пользователя {}",
                 state, from, size, userId);
         return ResponseEntity.ok(bookingService.getUserBookings(userId, state, from, size));
@@ -62,8 +60,8 @@ public class BookingServerController {
     public ResponseEntity<List<BookingResponseDto>> getOwnerBookings(
             @RequestHeader("X-Sharer-User-Id") Long ownerId,
             @RequestParam(defaultValue = "ALL") String state,
-            @RequestParam(defaultValue = "0") @PositiveOrZero int from,
-            @RequestParam(defaultValue = "10") @Positive int size) {
+            @RequestParam(defaultValue = "0") int from, // Убрано @PositiveOrZero
+            @RequestParam(defaultValue = "10") int size) { // Убрано @Positive
         log.info("SERVER: GET /bookings/owner?state={}&from={}&size={} - получение бронирований владельца {}",
                 state, from, size, ownerId);
         return ResponseEntity.ok(bookingService.getOwnerBookings(ownerId, state, from, size));

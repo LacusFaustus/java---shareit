@@ -15,6 +15,7 @@ import ru.practicum.shareit.server.exception.ValidationException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -301,10 +302,8 @@ class ItemRequestServiceTest {
 
     @Test
     void getUserItemRequests_ReturnsInDescendingOrder() {
-        // Используем существующий метод createUser с одним параметром
         UserDto requester = createUser("requester-order");
 
-        // Сохраняем ID созданных запросов
         List<Long> createdIds = new ArrayList<>();
 
         for (int i = 1; i <= 5; i++) {
@@ -313,23 +312,29 @@ class ItemRequestServiceTest {
                     .build();
             ItemRequestDto created = itemRequestService.createItemRequest(requestDto, requester.getId());
             createdIds.add(created.getId());
+
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
 
         List<ItemRequestDto> result = itemRequestService.getUserItemRequests(requester.getId());
 
-        // Проверяем размер
         assertThat(result).hasSize(5);
 
-        // Проверяем, что ID отсортированы по убыванию
         List<Long> resultIds = result.stream()
                 .map(ItemRequestDto::getId)
                 .collect(Collectors.toList());
 
-        // Создаем ожидаемый порядок (обратный порядок создания)
         List<Long> expectedOrder = new ArrayList<>(createdIds);
-        java.util.Collections.reverse(expectedOrder);
+        Collections.reverse(expectedOrder);
 
         assertThat(resultIds).isEqualTo(expectedOrder);
+
+        assertThat(result.get(0).getId()).isEqualTo(createdIds.get(4)); // id=5
+        assertThat(result.get(4).getId()).isEqualTo(createdIds.get(0)); // id=1
     }
 
     @Test
