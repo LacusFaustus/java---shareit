@@ -161,7 +161,86 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>3.1.2</version>
                 </plugin>
+
+                <!-- Failsafe Plugin для интеграционных тестов -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>3.1.2</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>integration-test</goal>
+                                <goal>verify</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
+
+        <!-- Убрать или исправить плагин enforcer -->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <id>enforce</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <!-- Убрать требование профиля check или исправить -->
+                            <rules>
+                                <requireJavaVersion>
+                                    <version>[21,)</version>
+                                </requireJavaVersion>
+                                <requireMavenVersion>
+                                    <version>[3.9.0,)</version>
+                                </requireMavenVersion>
+                                <!-- Убрать это правило или исправить -->
+                                <!--
+                                <requireProfileIdsExist>
+                                    <profiles>check</profiles>
+                                </requireProfileIdsExist>
+                                -->
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
     </build>
+
+    <!-- Профили -->
+    <profiles>
+        <!-- Добавить профиль check если он требуется -->
+        <profile>
+            <id>check</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-checkstyle-plugin</artifactId>
+                        <version>3.3.0</version>
+                        <executions>
+                            <execution>
+                                <phase>validate</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <configLocation>checkstyle.xml</configLocation>
+                            <suppressionsLocation>suppressions.xml</suppressionsLocation>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
