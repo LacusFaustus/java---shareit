@@ -1,3 +1,3 @@
 FROM openjdk:21-slim
-COPY target/*.jar app.jar
+COPY app.jar app.jar
 ENTRYPOINT ["java", "-jar", "/app.jar"]
